@@ -34,6 +34,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/sessions/refresh").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/sessions/logout").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/owners").permitAll()
+                        .requestMatchers("/api/companies", "/api/companies/**").hasRole("OWNER")
                         .requestMatchers("/api/owners/**").hasRole("OWNER")
                         .anyRequest().authenticated()
                 )
