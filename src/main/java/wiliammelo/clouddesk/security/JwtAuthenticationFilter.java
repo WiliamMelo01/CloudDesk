@@ -9,6 +9,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import wiliammelo.clouddesk.session.SessionService;
 
 import java.io.IOException;
 import java.util.List;
@@ -19,9 +20,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtService jwtService;
+    private final SessionService sessionService;
 
-    public JwtAuthenticationFilter(JwtService jwtService) {
+    public JwtAuthenticationFilter(JwtService jwtService, SessionService sessionService) {
         this.jwtService = jwtService;
+        this.sessionService = sessionService;
     }
 
     @Override
@@ -33,6 +36,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String header = request.getHeader("Authorization");
         if (header != null && header.startsWith(BEARER_PREFIX)) {
             jwtService.parseAccessToken(header.substring(BEARER_PREFIX.length()))
+                    .filter(claims -> sessionService.isSessionActive(claims.userId(), claims.sessionId()))
                     .ifPresent(claims -> SecurityContextHolder.getContext().setAuthentication(
                             new UsernamePasswordAuthenticationToken(
                                     new JwtPrincipal(claims.userId(), claims.email(), claims.role(), claims.sessionId()),

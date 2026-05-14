@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.context.SecurityContextHolder;
+import wiliammelo.clouddesk.session.SessionService;
 import wiliammelo.clouddesk.user.User;
 import wiliammelo.clouddesk.user.UserRole;
 
@@ -19,6 +20,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class JwtAuthenticationFilterTest {
 
@@ -28,7 +30,8 @@ class JwtAuthenticationFilterTest {
             3600,
             7200
     );
-    private final JwtAuthenticationFilter filter = new JwtAuthenticationFilter(jwtService);
+    private final SessionService sessionService = mock(SessionService.class);
+    private final JwtAuthenticationFilter filter = new JwtAuthenticationFilter(jwtService, sessionService);
     private final UUID sessionId = UUID.fromString("22222222-2222-2222-2222-222222222222");
 
     @AfterEach
@@ -42,6 +45,8 @@ class JwtAuthenticationFilterTest {
         request.addHeader("Authorization", "Bearer " + jwtService.createAccessToken(admin(), sessionId).value());
         MockHttpServletResponse response = new MockHttpServletResponse();
         FilterChain chain = mock(FilterChain.class);
+        when(sessionService.isSessionActive(UUID.fromString("11111111-1111-1111-1111-111111111111"), sessionId))
+                .thenReturn(true);
 
         filter.doFilter(request, response, chain);
 
@@ -52,6 +57,21 @@ class JwtAuthenticationFilterTest {
         assertThat(SecurityContextHolder.getContext().getAuthentication().getAuthorities())
                 .extracting("authority")
                 .containsExactly("ROLE_ADMIN");
+        verify(chain).doFilter(request, response);
+    }
+
+    @Test
+    void skipsAccessTokenWhenSessionWasRevoked() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("Authorization", "Bearer " + jwtService.createAccessToken(admin(), sessionId).value());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        FilterChain chain = mock(FilterChain.class);
+        when(sessionService.isSessionActive(UUID.fromString("11111111-1111-1111-1111-111111111111"), sessionId))
+                .thenReturn(false);
+
+        filter.doFilter(request, response, chain);
+
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
         verify(chain).doFilter(request, response);
     }
 

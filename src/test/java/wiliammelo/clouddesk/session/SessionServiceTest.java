@@ -159,6 +159,29 @@ class SessionServiceTest {
     }
 
     @Test
+    void returnsTrueWhenSessionIsActiveForUser() throws Exception {
+        when(valueOperations.get("session:" + sessionId))
+                .thenReturn(write(session(sessionId, userId, "hash", Instant.parse("2030-05-14T17:00:00Z"))));
+
+        assertThat(sessionService.isSessionActive(userId, sessionId)).isTrue();
+    }
+
+    @Test
+    void returnsFalseWhenSessionIsMissing() {
+        when(valueOperations.get("session:" + sessionId)).thenReturn(null);
+
+        assertThat(sessionService.isSessionActive(userId, sessionId)).isFalse();
+    }
+
+    @Test
+    void returnsFalseWhenSessionBelongsToAnotherUser() throws Exception {
+        when(valueOperations.get("session:" + sessionId))
+                .thenReturn(write(session(sessionId, UUID.randomUUID(), "hash", Instant.parse("2030-05-14T17:00:00Z"))));
+
+        assertThat(sessionService.isSessionActive(userId, sessionId)).isFalse();
+    }
+
+    @Test
     void revokesCurrentSessionFromRefreshToken() throws Exception {
         SessionRecord session = session(sessionId, userId, "hashed-refresh-token", Instant.parse("2030-05-14T17:00:00Z"));
         when(valueOperations.get("session:" + sessionId)).thenReturn(write(session));

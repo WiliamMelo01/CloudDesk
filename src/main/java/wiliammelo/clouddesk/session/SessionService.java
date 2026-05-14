@@ -110,6 +110,12 @@ public class SessionService {
                 .toList();
     }
 
+    public boolean isSessionActive(UUID userId, UUID sessionId) {
+        return findById(sessionId)
+                .map(session -> session.userId().equals(userId))
+                .orElse(false);
+    }
+
     public void revokeCurrentSession(JwtClaims claims, String refreshToken) {
         SessionRecord session = validateRefreshSession(claims, refreshToken);
         delete(session);
