@@ -1,6 +1,21 @@
 spring:
   application:
     name: CloudDesk
+  docker:
+    compose:
+      enabled: true
+      file: compose.yaml
+      lifecycle-management: start-and-stop
+      readiness:
+        wait: always
+  datasource:
+    url: jdbc:postgresql://localhost:5432/clouddesk
+    username: clouddesk
+    password: clouddesk
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
   data:
     redis:
       repositories:
