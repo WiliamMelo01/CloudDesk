@@ -19,6 +19,7 @@ class CompanyResponseTest {
         set(company, "id", id);
         set(company, "createdAt", createdAt);
         set(company, "updatedAt", updatedAt);
+        company.setLogoUrl("http://localhost:4566/clouddesk-company-assets/companies/logo.png");
 
         CompanyResponse response = CompanyResponse.from(company);
 
@@ -26,6 +27,7 @@ class CompanyResponseTest {
         assertThat(response.name()).isEqualTo("ByteCare");
         assertThat(response.portalSlug()).isEqualTo("bytecare");
         assertThat(response.portalPath()).isEqualTo("/portal/bytecare");
+        assertThat(response.logoUrl()).isEqualTo("http://localhost:4566/clouddesk-company-assets/companies/logo.png");
         assertThat(response.active()).isTrue();
         assertThat(response.createdAt()).isEqualTo(createdAt);
         assertThat(response.updatedAt()).isEqualTo(updatedAt);

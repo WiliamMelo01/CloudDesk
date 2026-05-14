@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -13,8 +14,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -83,5 +86,27 @@ public class CompanyController {
     @ApiResponse(responseCode = "404", description = "Company not found")
     public void delete(@PathVariable UUID id) {
         companyService.delete(id);
+    }
+
+    @PostMapping(value = "/{id}/logo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Upload company logo", description = "Uploads a company logo image to S3 and returns the updated company.")
+    @ApiResponse(responseCode = "200", description = "Logo uploaded")
+    @ApiResponse(responseCode = "400", description = "Missing or invalid logo file")
+    @ApiResponse(responseCode = "401", description = "Missing or invalid access token")
+    @ApiResponse(responseCode = "403", description = "Authenticated user is not an owner")
+    @ApiResponse(responseCode = "404", description = "Company not found")
+    public CompanyResponse uploadLogo(@PathVariable UUID id, @RequestPart("file") MultipartFile file) {
+        return companyService.uploadLogo(id, file);
+    }
+
+    @DeleteMapping("/{id}/logo")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Delete company logo", description = "Deletes the company logo from S3 and clears the logo URL.")
+    @ApiResponse(responseCode = "204", description = "Logo deleted")
+    @ApiResponse(responseCode = "401", description = "Missing or invalid access token")
+    @ApiResponse(responseCode = "403", description = "Authenticated user is not an owner")
+    @ApiResponse(responseCode = "404", description = "Company not found")
+    public void deleteLogo(@PathVariable UUID id) {
+        companyService.deleteLogo(id);
     }
 }

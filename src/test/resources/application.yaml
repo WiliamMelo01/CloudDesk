@@ -15,3 +15,14 @@ spring:
     redis:
       repositories:
         enabled: false
+
+clouddesk:
+  storage:
+    s3:
+      bucket: clouddesk-company-assets-test
+      region: us-east-1
+      endpoint:
+      access-key: test
+      secret-key: test
+      public-base-url: http://localhost:4566
+      path-style-access-enabled: true

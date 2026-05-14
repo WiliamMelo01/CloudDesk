@@ -29,6 +29,12 @@ public class Company {
     @Column(nullable = false)
     private boolean active = true;
 
+    @Column(length = 260)
+    private String logoObjectKey;
+
+    @Column(length = 500)
+    private String logoUrl;
+
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -77,6 +83,22 @@ public class Company {
 
     public boolean isActive() {
         return active;
+    }
+
+    public String getLogoObjectKey() {
+        return logoObjectKey;
+    }
+
+    public void setLogoObjectKey(String logoObjectKey) {
+        this.logoObjectKey = logoObjectKey;
+    }
+
+    public String getLogoUrl() {
+        return logoUrl;
+    }
+
+    public void setLogoUrl(String logoUrl) {
+        this.logoUrl = logoUrl;
     }
 
     public void deactivate() {

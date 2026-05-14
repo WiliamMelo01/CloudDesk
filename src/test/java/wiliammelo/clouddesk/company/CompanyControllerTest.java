@@ -1,6 +1,7 @@
 package wiliammelo.clouddesk.company;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.web.MockMultipartFile;
 
 import java.time.Instant;
 import java.util.List;
@@ -61,8 +62,27 @@ class CompanyControllerTest {
         verify(companyService).delete(id);
     }
 
+    @Test
+    void uploadsLogo() {
+        UUID id = UUID.randomUUID();
+        MockMultipartFile file = new MockMultipartFile("file", "logo.png", "image/png", "logo".getBytes());
+        CompanyResponse response = response();
+        when(companyService.uploadLogo(id, file)).thenReturn(response);
+
+        assertThat(companyController.uploadLogo(id, file)).isEqualTo(response);
+    }
+
+    @Test
+    void deletesLogo() {
+        UUID id = UUID.randomUUID();
+
+        companyController.deleteLogo(id);
+
+        verify(companyService).deleteLogo(id);
+    }
+
     private CompanyResponse response() {
         Instant now = Instant.parse("2026-05-14T18:00:00Z");
-        return new CompanyResponse(UUID.randomUUID(), "ByteCare", "bytecare", "/portal/bytecare", true, now, now);
+        return new CompanyResponse(UUID.randomUUID(), "ByteCare", "bytecare", "/portal/bytecare", null, true, now, now);
     }
 }

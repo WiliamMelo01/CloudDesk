@@ -8,6 +8,7 @@ public record CompanyResponse(
         String name,
         String portalSlug,
         String portalPath,
+        String logoUrl,
         boolean active,
         Instant createdAt,
         Instant updatedAt
@@ -18,6 +19,7 @@ public record CompanyResponse(
                 company.getName(),
                 company.getPortalSlug(),
                 "/portal/" + company.getPortalSlug(),
+                company.getLogoUrl(),
                 company.isActive(),
                 company.getCreatedAt(),
                 company.getUpdatedAt()

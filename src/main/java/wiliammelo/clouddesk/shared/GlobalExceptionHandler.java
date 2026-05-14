@@ -30,6 +30,11 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.UNAUTHORIZED, exception.getMessage(), request.getRequestURI(), Map.of());
     }
 
+    @ExceptionHandler(BadRequestException.class)
+    ResponseEntity<ApiError> handleBadRequest(BadRequestException exception, HttpServletRequest request) {
+        return build(HttpStatus.BAD_REQUEST, exception.getMessage(), request.getRequestURI(), Map.of());
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException exception, HttpServletRequest request) {
         Map<String, String> fields = exception.getBindingResult()

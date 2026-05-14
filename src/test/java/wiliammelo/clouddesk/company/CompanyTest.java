@@ -19,10 +19,14 @@ class CompanyTest {
 
         company.setName("Updated");
         company.setPortalSlug("updated");
+        company.setLogoObjectKey("companies/id/logo/logo.png");
+        company.setLogoUrl("http://localhost/logo.png");
         company.deactivate();
 
         assertThat(company.getName()).isEqualTo("Updated");
         assertThat(company.getPortalSlug()).isEqualTo("updated");
+        assertThat(company.getLogoObjectKey()).isEqualTo("companies/id/logo/logo.png");
+        assertThat(company.getLogoUrl()).isEqualTo("http://localhost/logo.png");
         assertThat(company.isActive()).isFalse();
 
         company.prePersist();

@@ -63,6 +63,19 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void handlesBadRequest() {
+        var response = handler.handleBadRequest(
+                new BadRequestException("Invalid logo."),
+                request("/api/companies/id/logo")
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().status()).isEqualTo(400);
+        assertThat(response.getBody().message()).isEqualTo("Invalid logo.");
+    }
+
+    @Test
     void handlesValidationErrorWithDefaultMessage() throws Exception {
         BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(new Payload(""), "payload");
         bindingResult.addError(new FieldError("payload", "name", "must not be blank"));
