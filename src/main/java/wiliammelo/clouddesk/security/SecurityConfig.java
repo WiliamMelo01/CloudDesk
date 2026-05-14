@@ -30,9 +30,9 @@ public class SecurityConfig {
                 .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(authenticationEntryPoint))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/login/admin").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/sessions/refresh").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/sessions/logout").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/login/admin").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/sessions/refresh").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/sessions/logout").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/admins").permitAll()
                         .requestMatchers("/api/admins/**").hasRole("ADMIN")
                         .anyRequest().authenticated()

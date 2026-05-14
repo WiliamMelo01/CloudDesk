@@ -28,7 +28,7 @@ public class AuthController {
         this.authService = authService;
     }
 
-    @PostMapping("/login/admin")
+    @PostMapping("/api/login/admin")
     @Operation(
             summary = "Admin login",
             description = "Authenticates an admin, returns an access token in the response body, and sets a HttpOnly refresh_token cookie."

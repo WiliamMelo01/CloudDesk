@@ -40,7 +40,7 @@ public class SessionController {
         this.sessionService = sessionService;
     }
 
-    @PostMapping("/sessions/refresh")
+    @PostMapping("/api/sessions/refresh")
     @Operation(
             summary = "Refresh session",
             description = "Rotates the refresh session using the HttpOnly refresh_token cookie and returns a new access token."
@@ -51,7 +51,7 @@ public class SessionController {
             @Parameter(
                     name = AuthController.REFRESH_TOKEN_COOKIE,
                     in = ParameterIn.COOKIE,
-                    description = "HttpOnly refresh token cookie set by /login/admin"
+                    description = "HttpOnly refresh token cookie set by /api/login/admin"
             )
             @CookieValue(name = AuthController.REFRESH_TOKEN_COOKIE, required = false) String refreshToken,
             HttpServletRequest request
@@ -62,7 +62,7 @@ public class SessionController {
                 .body(result.response());
     }
 
-    @PostMapping("/sessions/logout")
+    @PostMapping("/api/sessions/logout")
     @Operation(summary = "Logout current session", description = "Revokes the current session using the refresh_token cookie.")
     @ApiResponse(responseCode = "204", description = "Current session revoked")
     @ApiResponse(responseCode = "401", description = "Missing or invalid refresh token")
@@ -70,7 +70,7 @@ public class SessionController {
             @Parameter(
                     name = AuthController.REFRESH_TOKEN_COOKIE,
                     in = ParameterIn.COOKIE,
-                    description = "HttpOnly refresh token cookie set by /login/admin"
+                    description = "HttpOnly refresh token cookie set by /api/login/admin"
             )
             @CookieValue(name = AuthController.REFRESH_TOKEN_COOKIE, required = false) String refreshToken
     ) {
@@ -80,7 +80,7 @@ public class SessionController {
                 .build();
     }
 
-    @GetMapping("/sessions")
+    @GetMapping("/api/sessions")
     @Operation(summary = "List active sessions", description = "Lists active sessions for the authenticated user.")
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponse(responseCode = "200", description = "Sessions returned")
@@ -89,7 +89,7 @@ public class SessionController {
         return sessionService.listSessions(principal.userId(), principal.sessionId());
     }
 
-    @DeleteMapping("/sessions/{sessionId}")
+    @DeleteMapping("/api/sessions/{sessionId}")
     @Operation(summary = "Revoke another session", description = "Revokes another active session owned by the authenticated user.")
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponse(responseCode = "204", description = "Session revoked")
