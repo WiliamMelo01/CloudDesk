@@ -2,13 +2,16 @@ package wiliammelo.clouddesk.auth;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
+import org.springframework.mock.web.MockHttpServletRequest;
 import wiliammelo.clouddesk.security.JwtToken;
+import wiliammelo.clouddesk.session.ClientRequestInfo;
 import wiliammelo.clouddesk.user.UserRole;
 
 import java.time.Instant;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -20,20 +23,23 @@ class AuthControllerTest {
     @Test
     void logsInAdminAndSetsHttpOnlyRefreshTokenCookie() {
         LoginRequest request = new LoginRequest("admin@cloud.test", "password123");
+        MockHttpServletRequest servletRequest = new MockHttpServletRequest();
+        servletRequest.setRemoteAddr("127.0.0.1");
+        servletRequest.addHeader("User-Agent", "JUnit");
         LoginResponse response = new LoginResponse(
                 "access-token",
                 "Bearer",
-                Instant.parse("2026-05-14T19:00:00Z"),
+                Instant.parse("2030-05-14T19:00:00Z"),
                 UUID.randomUUID(),
                 "admin@cloud.test",
                 UserRole.ADMIN
         );
-        when(authService.login(request)).thenReturn(new LoginResult(
+        when(authService.login(eq(request), eq(new ClientRequestInfo("127.0.0.1", "JUnit")))).thenReturn(new LoginResult(
                 response,
                 new JwtToken("refresh-token", Instant.now().plusSeconds(3600))
         ));
 
-        var result = authController.loginAdmin(request);
+        var result = authController.loginAdmin(request, servletRequest);
 
         assertThat(result.getBody()).isEqualTo(response);
         assertThat(result.getHeaders().getFirst(HttpHeaders.SET_COOKIE))

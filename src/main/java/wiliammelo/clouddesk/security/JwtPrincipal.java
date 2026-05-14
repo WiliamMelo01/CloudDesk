@@ -2,15 +2,12 @@ package wiliammelo.clouddesk.security;
 
 import wiliammelo.clouddesk.user.UserRole;
 
-import java.time.Instant;
 import java.util.UUID;
 
-public record JwtClaims(
+public record JwtPrincipal(
         UUID userId,
         String email,
         UserRole role,
-        UUID sessionId,
-        TokenType tokenType,
-        Instant expiresAt
+        UUID sessionId
 ) {
 }

@@ -23,12 +23,13 @@ import static org.mockito.Mockito.verify;
 class JwtAuthenticationFilterTest {
 
     private final JwtService jwtService = new JwtService(
-            Clock.fixed(Instant.parse("2026-05-14T18:00:00Z"), ZoneOffset.UTC),
+            Clock.fixed(Instant.parse("2030-05-14T18:00:00Z"), ZoneOffset.UTC),
             Algorithm.HMAC256("test-secret"),
             3600,
             7200
     );
     private final JwtAuthenticationFilter filter = new JwtAuthenticationFilter(jwtService);
+    private final UUID sessionId = UUID.fromString("22222222-2222-2222-2222-222222222222");
 
     @AfterEach
     void clearSecurityContext() {
@@ -38,14 +39,16 @@ class JwtAuthenticationFilterTest {
     @Test
     void authenticatesBearerToken() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader("Authorization", "Bearer " + jwtService.createAccessToken(admin()).value());
+        request.addHeader("Authorization", "Bearer " + jwtService.createAccessToken(admin(), sessionId).value());
         MockHttpServletResponse response = new MockHttpServletResponse();
         FilterChain chain = mock(FilterChain.class);
 
         filter.doFilter(request, response, chain);
 
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNotNull();
-        assertThat(SecurityContextHolder.getContext().getAuthentication().getName()).isEqualTo("admin@cloud.test");
+        JwtPrincipal principal = (JwtPrincipal) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        assertThat(principal.email()).isEqualTo("admin@cloud.test");
+        assertThat(principal.sessionId()).isEqualTo(sessionId);
         assertThat(SecurityContextHolder.getContext().getAuthentication().getAuthorities())
                 .extracting("authority")
                 .containsExactly("ROLE_ADMIN");
@@ -93,7 +96,7 @@ class JwtAuthenticationFilterTest {
     @Test
     void skipsRefreshTokenInAuthorizationHeader() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader("Authorization", "Bearer " + jwtService.createRefreshToken(admin()).value());
+        request.addHeader("Authorization", "Bearer " + jwtService.createRefreshToken(admin(), sessionId).value());
         MockHttpServletResponse response = new MockHttpServletResponse();
         FilterChain chain = mock(FilterChain.class);
 

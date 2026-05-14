@@ -23,6 +23,7 @@ public class JwtService {
     private static final String ISSUER = "clouddesk";
     private static final String USER_ID_CLAIM = "userId";
     private static final String ROLE_CLAIM = "role";
+    private static final String SESSION_ID_CLAIM = "sessionId";
     private static final String TOKEN_TYPE_CLAIM = "tokenType";
 
     private final Clock clock;
@@ -51,12 +52,12 @@ public class JwtService {
         this.refreshExpirationSeconds = refreshExpirationSeconds;
     }
 
-    public JwtToken createAccessToken(User user) {
-        return createToken(user, TokenType.ACCESS, accessExpirationSeconds);
+    public JwtToken createAccessToken(User user, UUID sessionId) {
+        return createToken(user, sessionId, TokenType.ACCESS, accessExpirationSeconds);
     }
 
-    public JwtToken createRefreshToken(User user) {
-        return createToken(user, TokenType.REFRESH, refreshExpirationSeconds);
+    public JwtToken createRefreshToken(User user, UUID sessionId) {
+        return createToken(user, sessionId, TokenType.REFRESH, refreshExpirationSeconds);
     }
 
     public Optional<JwtClaims> parseAccessToken(String token) {
@@ -67,13 +68,14 @@ public class JwtService {
         return parse(token, TokenType.REFRESH);
     }
 
-    private JwtToken createToken(User user, TokenType tokenType, long expirationSeconds) {
+    private JwtToken createToken(User user, UUID sessionId, TokenType tokenType, long expirationSeconds) {
         Instant expiresAt = clock.instant().plusSeconds(expirationSeconds);
         String token = JWT.create()
                 .withIssuer(ISSUER)
                 .withSubject(user.getEmail())
                 .withClaim(USER_ID_CLAIM, user.getId().toString())
                 .withClaim(ROLE_CLAIM, user.getRole().name())
+                .withClaim(SESSION_ID_CLAIM, sessionId.toString())
                 .withClaim(TOKEN_TYPE_CLAIM, tokenType.name())
                 .withExpiresAt(Date.from(expiresAt))
                 .sign(algorithm);
@@ -91,6 +93,7 @@ public class JwtService {
                     UUID.fromString(jwt.getClaim(USER_ID_CLAIM).asString()),
                     jwt.getSubject(),
                     UserRole.valueOf(jwt.getClaim(ROLE_CLAIM).asString()),
+                    UUID.fromString(jwt.getClaim(SESSION_ID_CLAIM).asString()),
                     TokenType.valueOf(jwt.getClaim(TOKEN_TYPE_CLAIM).asString()),
                     jwt.getExpiresAtAsInstant()
             ));

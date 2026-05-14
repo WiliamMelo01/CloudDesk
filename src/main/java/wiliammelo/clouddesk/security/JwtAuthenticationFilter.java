@@ -35,7 +35,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             jwtService.parseAccessToken(header.substring(BEARER_PREFIX.length()))
                     .ifPresent(claims -> SecurityContextHolder.getContext().setAuthentication(
                             new UsernamePasswordAuthenticationToken(
-                                    claims.email(),
+                                    new JwtPrincipal(claims.userId(), claims.email(), claims.role(), claims.sessionId()),
                                     null,
                                     List.of(new SimpleGrantedAuthority("ROLE_" + claims.role().name()))
                             )
