@@ -1,5 +1,11 @@
 package wiliammelo.clouddesk.session;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
@@ -23,6 +29,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
+@Tag(name = "Sessions", description = "Active session management")
 public class SessionController {
 
     private final AuthService authService;
@@ -34,7 +41,18 @@ public class SessionController {
     }
 
     @PostMapping("/sessions/refresh")
+    @Operation(
+            summary = "Refresh session",
+            description = "Rotates the refresh session using the HttpOnly refresh_token cookie and returns a new access token."
+    )
+    @ApiResponse(responseCode = "200", description = "Session refreshed")
+    @ApiResponse(responseCode = "401", description = "Missing or invalid refresh token")
     public ResponseEntity<LoginResponse> refresh(
+            @Parameter(
+                    name = AuthController.REFRESH_TOKEN_COOKIE,
+                    in = ParameterIn.COOKIE,
+                    description = "HttpOnly refresh token cookie set by /login/admin"
+            )
             @CookieValue(name = AuthController.REFRESH_TOKEN_COOKIE, required = false) String refreshToken,
             HttpServletRequest request
     ) {
@@ -45,7 +63,15 @@ public class SessionController {
     }
 
     @PostMapping("/sessions/logout")
+    @Operation(summary = "Logout current session", description = "Revokes the current session using the refresh_token cookie.")
+    @ApiResponse(responseCode = "204", description = "Current session revoked")
+    @ApiResponse(responseCode = "401", description = "Missing or invalid refresh token")
     public ResponseEntity<Void> logout(
+            @Parameter(
+                    name = AuthController.REFRESH_TOKEN_COOKIE,
+                    in = ParameterIn.COOKIE,
+                    description = "HttpOnly refresh token cookie set by /login/admin"
+            )
             @CookieValue(name = AuthController.REFRESH_TOKEN_COOKIE, required = false) String refreshToken
     ) {
         authService.logout(refreshToken);
@@ -55,11 +81,21 @@ public class SessionController {
     }
 
     @GetMapping("/sessions")
+    @Operation(summary = "List active sessions", description = "Lists active sessions for the authenticated user.")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponse(responseCode = "200", description = "Sessions returned")
+    @ApiResponse(responseCode = "401", description = "Missing, invalid, or revoked access token")
     public List<SessionResponse> list(@AuthenticationPrincipal JwtPrincipal principal) {
         return sessionService.listSessions(principal.userId(), principal.sessionId());
     }
 
     @DeleteMapping("/sessions/{sessionId}")
+    @Operation(summary = "Revoke another session", description = "Revokes another active session owned by the authenticated user.")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponse(responseCode = "204", description = "Session revoked")
+    @ApiResponse(responseCode = "401", description = "Missing, invalid, or revoked access token")
+    @ApiResponse(responseCode = "404", description = "Session not found")
+    @ApiResponse(responseCode = "409", description = "Cannot revoke current session with this endpoint")
     public ResponseEntity<Void> revoke(
             @AuthenticationPrincipal JwtPrincipal principal,
             @PathVariable UUID sessionId

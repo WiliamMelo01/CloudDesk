@@ -1,5 +1,8 @@
 package wiliammelo.clouddesk.auth;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpHeaders;
@@ -14,6 +17,7 @@ import java.time.Duration;
 import java.time.Instant;
 
 @RestController
+@Tag(name = "Authentication", description = "Login endpoints")
 public class AuthController {
 
     public static final String REFRESH_TOKEN_COOKIE = "refresh_token";
@@ -25,6 +29,13 @@ public class AuthController {
     }
 
     @PostMapping("/login/admin")
+    @Operation(
+            summary = "Admin login",
+            description = "Authenticates an admin, returns an access token in the response body, and sets a HttpOnly refresh_token cookie."
+    )
+    @ApiResponse(responseCode = "200", description = "Authenticated")
+    @ApiResponse(responseCode = "400", description = "Invalid request")
+    @ApiResponse(responseCode = "401", description = "Invalid credentials")
     public ResponseEntity<LoginResponse> loginAdmin(
             @Valid @RequestBody LoginRequest request,
             HttpServletRequest httpServletRequest
