@@ -21,14 +21,14 @@ class JwtServiceTest {
 
     @Test
     void createsAndParsesAccessToken() {
-        JwtToken token = jwtService.createAccessToken(admin(), sessionId);
+        JwtToken token = jwtService.createAccessToken(owner(), sessionId);
 
         JwtClaims claims = jwtService.parseAccessToken(token.value()).orElseThrow();
 
         assertThat(token.expiresAt()).isEqualTo(Instant.parse("2030-05-14T19:00:00Z"));
         assertThat(claims.userId()).isEqualTo(UUID.fromString("11111111-1111-1111-1111-111111111111"));
-        assertThat(claims.email()).isEqualTo("admin@cloud.test");
-        assertThat(claims.role()).isEqualTo(UserRole.ADMIN);
+        assertThat(claims.email()).isEqualTo("owner@cloud.test");
+        assertThat(claims.role()).isEqualTo(UserRole.OWNER);
         assertThat(claims.sessionId()).isEqualTo(sessionId);
         assertThat(claims.tokenType()).isEqualTo(TokenType.ACCESS);
         assertThat(claims.expiresAt()).isEqualTo(token.expiresAt());
@@ -36,7 +36,7 @@ class JwtServiceTest {
 
     @Test
     void createsAndParsesRefreshToken() {
-        JwtToken token = jwtService.createRefreshToken(admin(), sessionId);
+        JwtToken token = jwtService.createRefreshToken(owner(), sessionId);
 
         JwtClaims claims = jwtService.parseRefreshToken(token.value()).orElseThrow();
 
@@ -51,14 +51,14 @@ class JwtServiceTest {
 
     @Test
     void rejectsAccessTokenWhenRefreshTokenIsExpected() {
-        JwtToken accessToken = jwtService.createAccessToken(admin(), sessionId);
+        JwtToken accessToken = jwtService.createAccessToken(owner(), sessionId);
 
         assertThat(jwtService.parseRefreshToken(accessToken.value())).isEmpty();
     }
 
     @Test
     void rejectsRefreshTokenWhenAccessTokenIsExpected() {
-        JwtToken refreshToken = jwtService.createRefreshToken(admin(), sessionId);
+        JwtToken refreshToken = jwtService.createRefreshToken(owner(), sessionId);
 
         assertThat(jwtService.parseAccessToken(refreshToken.value())).isEmpty();
     }
@@ -72,25 +72,25 @@ class JwtServiceTest {
                 -1
         );
 
-        assertThat(expiredService.parseAccessToken(expiredService.createAccessToken(admin(), sessionId).value())).isEmpty();
+        assertThat(expiredService.parseAccessToken(expiredService.createAccessToken(owner(), sessionId).value())).isEmpty();
     }
 
     @Test
     void rejectsTokenSignedWithAnotherSecret() {
         JwtService otherService = new JwtService(clock, Algorithm.HMAC256("other-secret"), 3600, 7200);
 
-        assertThat(jwtService.parseAccessToken(otherService.createAccessToken(admin(), sessionId).value())).isEmpty();
+        assertThat(jwtService.parseAccessToken(otherService.createAccessToken(owner(), sessionId).value())).isEmpty();
     }
 
     @Test
     void createsServiceWithProductionConstructor() {
         JwtService service = new JwtService("test-secret", 3600, 7200);
 
-        assertThat(service.createAccessToken(admin(), sessionId).value()).isNotBlank();
+        assertThat(service.createAccessToken(owner(), sessionId).value()).isNotBlank();
     }
 
-    private User admin() {
-        User user = new User("Admin", "admin@cloud.test", "hash", UserRole.ADMIN);
+    private User owner() {
+        User user = new User("Owner", "owner@cloud.test", "hash", UserRole.OWNER);
         try {
             Field field = User.class.getDeclaredField("id");
             field.setAccessible(true);

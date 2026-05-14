@@ -1,10 +1,10 @@
-package wiliammelo.clouddesk.admin;
+package wiliammelo.clouddesk.owner;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-public record AdminCreateRequest(
+public record OwnerCreateRequest(
         @NotBlank
         @Size(max = 120)
         String name,

@@ -1,4 +1,4 @@
-package wiliammelo.clouddesk.admin;
+package wiliammelo.clouddesk.owner;
 
 import wiliammelo.clouddesk.user.User;
 import wiliammelo.clouddesk.user.UserRole;
@@ -6,7 +6,7 @@ import wiliammelo.clouddesk.user.UserRole;
 import java.time.Instant;
 import java.util.UUID;
 
-public record AdminResponse(
+public record OwnerResponse(
         UUID id,
         String name,
         String email,
@@ -15,8 +15,8 @@ public record AdminResponse(
         Instant createdAt,
         Instant updatedAt
 ) {
-    static AdminResponse from(User user) {
-        return new AdminResponse(
+    static OwnerResponse from(User user) {
+        return new OwnerResponse(
                 user.getId(),
                 user.getName(),
                 user.getEmail(),

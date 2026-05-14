@@ -51,7 +51,7 @@ public class SessionController {
             @Parameter(
                     name = AuthController.REFRESH_TOKEN_COOKIE,
                     in = ParameterIn.COOKIE,
-                    description = "HttpOnly refresh token cookie set by /api/login/admin"
+                    description = "HttpOnly refresh token cookie set by /api/login/owner"
             )
             @CookieValue(name = AuthController.REFRESH_TOKEN_COOKIE, required = false) String refreshToken,
             HttpServletRequest request
@@ -70,7 +70,7 @@ public class SessionController {
             @Parameter(
                     name = AuthController.REFRESH_TOKEN_COOKIE,
                     in = ParameterIn.COOKIE,
-                    description = "HttpOnly refresh token cookie set by /api/login/admin"
+                    description = "HttpOnly refresh token cookie set by /api/login/owner"
             )
             @CookieValue(name = AuthController.REFRESH_TOKEN_COOKIE, required = false) String refreshToken
     ) {

@@ -8,15 +8,15 @@ class UserTest {
 
     @Test
     void createsAndMutatesUser() {
-        User user = new User("Admin", "admin@cloud.test", "hash", UserRole.ADMIN);
+        User user = new User("Owner", "owner@cloud.test", "hash", UserRole.OWNER);
 
         user.prePersist();
 
         assertThat(user.getId()).isNull();
-        assertThat(user.getName()).isEqualTo("Admin");
-        assertThat(user.getEmail()).isEqualTo("admin@cloud.test");
+        assertThat(user.getName()).isEqualTo("Owner");
+        assertThat(user.getEmail()).isEqualTo("owner@cloud.test");
         assertThat(user.getPasswordHash()).isEqualTo("hash");
-        assertThat(user.getRole()).isEqualTo(UserRole.ADMIN);
+        assertThat(user.getRole()).isEqualTo(UserRole.OWNER);
         assertThat(user.isActive()).isTrue();
         assertThat(user.getCreatedAt()).isNotNull();
         assertThat(user.getUpdatedAt()).isNotNull();

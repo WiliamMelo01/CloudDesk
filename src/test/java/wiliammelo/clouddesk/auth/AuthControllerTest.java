@@ -21,8 +21,8 @@ class AuthControllerTest {
     private final AuthController authController = new AuthController(authService);
 
     @Test
-    void logsInAdminAndSetsHttpOnlyRefreshTokenCookie() {
-        LoginRequest request = new LoginRequest("admin@cloud.test", "password123");
+    void logsInOwnerAndSetsHttpOnlyRefreshTokenCookie() {
+        LoginRequest request = new LoginRequest("owner@cloud.test", "password123");
         MockHttpServletRequest servletRequest = new MockHttpServletRequest();
         servletRequest.setRemoteAddr("127.0.0.1");
         servletRequest.addHeader("User-Agent", "JUnit");
@@ -31,15 +31,15 @@ class AuthControllerTest {
                 "Bearer",
                 Instant.parse("2030-05-14T19:00:00Z"),
                 UUID.randomUUID(),
-                "admin@cloud.test",
-                UserRole.ADMIN
+                "owner@cloud.test",
+                UserRole.OWNER
         );
         when(authService.login(eq(request), eq(new ClientRequestInfo("127.0.0.1", "JUnit")))).thenReturn(new LoginResult(
                 response,
                 new JwtToken("refresh-token", Instant.now().plusSeconds(3600))
         ));
 
-        var result = authController.loginAdmin(request, servletRequest);
+        var result = authController.loginOwner(request, servletRequest);
 
         assertThat(result.getBody()).isEqualTo(response);
         assertThat(result.getHeaders().getFirst(HttpHeaders.SET_COOKIE))

@@ -1,4 +1,4 @@
-package wiliammelo.clouddesk.admin;
+package wiliammelo.clouddesk.owner;
 
 import org.junit.jupiter.api.Test;
 import wiliammelo.clouddesk.user.User;
@@ -6,18 +6,18 @@ import wiliammelo.clouddesk.user.UserRole;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class AdminResponseTest {
+class OwnerResponseTest {
 
     @Test
     void mapsFromUser() {
-        User user = new User("Admin", "admin@cloud.test", "hash", UserRole.ADMIN);
+        User user = new User("Owner", "owner@cloud.test", "hash", UserRole.OWNER);
 
-        AdminResponse response = AdminResponse.from(user);
+        OwnerResponse response = OwnerResponse.from(user);
 
         assertThat(response.id()).isNull();
-        assertThat(response.name()).isEqualTo("Admin");
-        assertThat(response.email()).isEqualTo("admin@cloud.test");
-        assertThat(response.role()).isEqualTo(UserRole.ADMIN);
+        assertThat(response.name()).isEqualTo("Owner");
+        assertThat(response.email()).isEqualTo("owner@cloud.test");
+        assertThat(response.role()).isEqualTo(UserRole.OWNER);
         assertThat(response.active()).isTrue();
         assertThat(response.createdAt()).isNull();
         assertThat(response.updatedAt()).isNull();

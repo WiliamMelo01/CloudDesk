@@ -33,8 +33,8 @@ class SecurityConfigTest {
 
     @Test
     void userDetailsServiceDoesNotExposeDefaultUsers() {
-        assertThatThrownBy(() -> securityConfig.userDetailsService().loadUserByUsername("admin@cloud.test"))
+        assertThatThrownBy(() -> securityConfig.userDetailsService().loadUserByUsername("owner@cloud.test"))
                 .isInstanceOf(UsernameNotFoundException.class)
-                .hasMessage("admin@cloud.test");
+                .hasMessage("owner@cloud.test");
     }
 }

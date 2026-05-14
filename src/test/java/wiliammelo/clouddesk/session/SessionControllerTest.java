@@ -60,10 +60,10 @@ class SessionControllerTest {
     void listsCurrentUserSessions() {
         UUID userId = UUID.randomUUID();
         UUID sessionId = UUID.randomUUID();
-        JwtPrincipal principal = new JwtPrincipal(userId, "admin@cloud.test", UserRole.ADMIN, sessionId);
+        JwtPrincipal principal = new JwtPrincipal(userId, "owner@cloud.test", UserRole.OWNER, sessionId);
         List<SessionResponse> sessions = List.of(new SessionResponse(
                 sessionId,
-                UserRole.ADMIN,
+                UserRole.OWNER,
                 Instant.now(),
                 Instant.now().plusSeconds(3600),
                 Instant.now(),
@@ -81,7 +81,7 @@ class SessionControllerTest {
         UUID userId = UUID.randomUUID();
         UUID currentSessionId = UUID.randomUUID();
         UUID revokedSessionId = UUID.randomUUID();
-        JwtPrincipal principal = new JwtPrincipal(userId, "admin@cloud.test", UserRole.ADMIN, currentSessionId);
+        JwtPrincipal principal = new JwtPrincipal(userId, "owner@cloud.test", UserRole.OWNER, currentSessionId);
 
         var result = controller.revoke(principal, revokedSessionId);
 
@@ -95,8 +95,8 @@ class SessionControllerTest {
                 "Bearer",
                 Instant.now().plusSeconds(900),
                 UUID.randomUUID(),
-                "admin@cloud.test",
-                UserRole.ADMIN
+                "owner@cloud.test",
+                UserRole.OWNER
         );
     }
 }

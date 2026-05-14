@@ -1,4 +1,4 @@
-package wiliammelo.clouddesk.admin;
+package wiliammelo.clouddesk.owner;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -20,63 +20,63 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/admins")
-@Tag(name = "Admins", description = "Admin user management")
+@RequestMapping("/api/owners")
+@Tag(name = "Owners", description = "Owner user management")
 @SecurityRequirement(name = "bearerAuth")
-public class AdminController {
+public class OwnerController {
 
-    private final AdminService adminService;
+    private final OwnerService ownerService;
 
-    public AdminController(AdminService adminService) {
-        this.adminService = adminService;
+    public OwnerController(OwnerService ownerService) {
+        this.ownerService = ownerService;
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Create admin", description = "Creates a new active admin user.")
-    @ApiResponse(responseCode = "201", description = "Admin created")
+    @Operation(summary = "Create owner", description = "Creates a new active owner user.")
+    @ApiResponse(responseCode = "201", description = "Owner created")
     @ApiResponse(responseCode = "400", description = "Invalid request")
     @ApiResponse(responseCode = "401", description = "Missing or invalid access token")
     @ApiResponse(responseCode = "409", description = "Email already in use")
-    public AdminResponse create(@Valid @RequestBody AdminCreateRequest request) {
-        return adminService.create(request);
+    public OwnerResponse create(@Valid @RequestBody OwnerCreateRequest request) {
+        return ownerService.create(request);
     }
 
     @GetMapping
-    @Operation(summary = "List admins", description = "Lists active admin users.")
-    @ApiResponse(responseCode = "200", description = "Admins returned")
+    @Operation(summary = "List owners", description = "Lists active owner users.")
+    @ApiResponse(responseCode = "200", description = "Owners returned")
     @ApiResponse(responseCode = "401", description = "Missing or invalid access token")
-    public List<AdminResponse> list() {
-        return adminService.list();
+    public List<OwnerResponse> list() {
+        return ownerService.list();
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Get admin", description = "Returns one active admin by id.")
-    @ApiResponse(responseCode = "200", description = "Admin returned")
+    @Operation(summary = "Get owner", description = "Returns one active owner by id.")
+    @ApiResponse(responseCode = "200", description = "Owner returned")
     @ApiResponse(responseCode = "401", description = "Missing or invalid access token")
-    @ApiResponse(responseCode = "404", description = "Admin not found")
-    public AdminResponse get(@PathVariable UUID id) {
-        return adminService.get(id);
+    @ApiResponse(responseCode = "404", description = "Owner not found")
+    public OwnerResponse get(@PathVariable UUID id) {
+        return ownerService.get(id);
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Update admin", description = "Updates admin name, email, and optionally password.")
-    @ApiResponse(responseCode = "200", description = "Admin updated")
+    @Operation(summary = "Update owner", description = "Updates owner name, email, and optionally password.")
+    @ApiResponse(responseCode = "200", description = "Owner updated")
     @ApiResponse(responseCode = "400", description = "Invalid request")
     @ApiResponse(responseCode = "401", description = "Missing or invalid access token")
-    @ApiResponse(responseCode = "404", description = "Admin not found")
+    @ApiResponse(responseCode = "404", description = "Owner not found")
     @ApiResponse(responseCode = "409", description = "Email already in use")
-    public AdminResponse update(@PathVariable UUID id, @Valid @RequestBody AdminUpdateRequest request) {
-        return adminService.update(id, request);
+    public OwnerResponse update(@PathVariable UUID id, @Valid @RequestBody OwnerUpdateRequest request) {
+        return ownerService.update(id, request);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @Operation(summary = "Delete admin", description = "Soft-deletes an admin by marking it inactive.")
-    @ApiResponse(responseCode = "204", description = "Admin deleted")
+    @Operation(summary = "Delete owner", description = "Soft-deletes an owner by marking it inactive.")
+    @ApiResponse(responseCode = "204", description = "Owner deleted")
     @ApiResponse(responseCode = "401", description = "Missing or invalid access token")
-    @ApiResponse(responseCode = "404", description = "Admin not found")
+    @ApiResponse(responseCode = "404", description = "Owner not found")
     public void delete(@PathVariable UUID id) {
-        adminService.delete(id);
+        ownerService.delete(id);
     }
 }

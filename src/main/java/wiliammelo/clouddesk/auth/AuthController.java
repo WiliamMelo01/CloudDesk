@@ -28,15 +28,15 @@ public class AuthController {
         this.authService = authService;
     }
 
-    @PostMapping("/api/login/admin")
+    @PostMapping("/api/login/owner")
     @Operation(
-            summary = "Admin login",
-            description = "Authenticates an admin, returns an access token in the response body, and sets a HttpOnly refresh_token cookie."
+            summary = "Owner login",
+            description = "Authenticates an owner, returns an access token in the response body, and sets a HttpOnly refresh_token cookie."
     )
     @ApiResponse(responseCode = "200", description = "Authenticated")
     @ApiResponse(responseCode = "400", description = "Invalid request")
     @ApiResponse(responseCode = "401", description = "Invalid credentials")
-    public ResponseEntity<LoginResponse> loginAdmin(
+    public ResponseEntity<LoginResponse> loginOwner(
             @Valid @RequestBody LoginRequest request,
             HttpServletRequest httpServletRequest
     ) {

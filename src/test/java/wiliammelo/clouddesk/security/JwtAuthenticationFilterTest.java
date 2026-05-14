@@ -42,7 +42,7 @@ class JwtAuthenticationFilterTest {
     @Test
     void authenticatesBearerToken() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader("Authorization", "Bearer " + jwtService.createAccessToken(admin(), sessionId).value());
+        request.addHeader("Authorization", "Bearer " + jwtService.createAccessToken(owner(), sessionId).value());
         MockHttpServletResponse response = new MockHttpServletResponse();
         FilterChain chain = mock(FilterChain.class);
         when(sessionService.isSessionActive(UUID.fromString("11111111-1111-1111-1111-111111111111"), sessionId))
@@ -52,18 +52,18 @@ class JwtAuthenticationFilterTest {
 
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNotNull();
         JwtPrincipal principal = (JwtPrincipal) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        assertThat(principal.email()).isEqualTo("admin@cloud.test");
+        assertThat(principal.email()).isEqualTo("owner@cloud.test");
         assertThat(principal.sessionId()).isEqualTo(sessionId);
         assertThat(SecurityContextHolder.getContext().getAuthentication().getAuthorities())
                 .extracting("authority")
-                .containsExactly("ROLE_ADMIN");
+                .containsExactly("ROLE_OWNER");
         verify(chain).doFilter(request, response);
     }
 
     @Test
     void skipsAccessTokenWhenSessionWasRevoked() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader("Authorization", "Bearer " + jwtService.createAccessToken(admin(), sessionId).value());
+        request.addHeader("Authorization", "Bearer " + jwtService.createAccessToken(owner(), sessionId).value());
         MockHttpServletResponse response = new MockHttpServletResponse();
         FilterChain chain = mock(FilterChain.class);
         when(sessionService.isSessionActive(UUID.fromString("11111111-1111-1111-1111-111111111111"), sessionId))
@@ -116,7 +116,7 @@ class JwtAuthenticationFilterTest {
     @Test
     void skipsRefreshTokenInAuthorizationHeader() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader("Authorization", "Bearer " + jwtService.createRefreshToken(admin(), sessionId).value());
+        request.addHeader("Authorization", "Bearer " + jwtService.createRefreshToken(owner(), sessionId).value());
         MockHttpServletResponse response = new MockHttpServletResponse();
         FilterChain chain = mock(FilterChain.class);
 
@@ -126,8 +126,8 @@ class JwtAuthenticationFilterTest {
         verify(chain).doFilter(request, response);
     }
 
-    private User admin() {
-        User user = new User("Admin", "admin@cloud.test", "hash", UserRole.ADMIN);
+    private User owner() {
+        User user = new User("Owner", "owner@cloud.test", "hash", UserRole.OWNER);
         try {
             Field field = User.class.getDeclaredField("id");
             field.setAccessible(true);

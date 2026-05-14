@@ -40,7 +40,7 @@ public class AuthService {
         String email = request.email().trim().toLowerCase();
         User user = userRepository.findByEmailIgnoreCase(email)
                 .filter(User::isActive)
-                .filter(foundUser -> foundUser.getRole() == UserRole.ADMIN)
+                .filter(foundUser -> foundUser.getRole() == UserRole.OWNER)
                 .orElseThrow(() -> new AuthenticationException("Invalid credentials."));
 
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {

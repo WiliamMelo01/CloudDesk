@@ -259,8 +259,8 @@ class SessionServiceTest {
     private JwtClaims claims(UUID id, UUID ownerId) {
         return new JwtClaims(
                 ownerId,
-                "admin@cloud.test",
-                UserRole.ADMIN,
+                "owner@cloud.test",
+                UserRole.OWNER,
                 id,
                 TokenType.REFRESH,
                 Instant.parse("2030-05-14T20:00:00Z")
@@ -271,8 +271,8 @@ class SessionServiceTest {
         return new SessionRecord(
                 id,
                 ownerId,
-                "admin@cloud.test",
-                UserRole.ADMIN,
+                "owner@cloud.test",
+                UserRole.OWNER,
                 hash,
                 Instant.parse("2030-05-14T16:00:00Z"),
                 Instant.parse("2030-05-14T20:00:00Z"),
@@ -283,7 +283,7 @@ class SessionServiceTest {
     }
 
     private User user() {
-        User user = new User("Admin", "admin@cloud.test", "hash", UserRole.ADMIN);
+        User user = new User("Owner", "owner@cloud.test", "hash", UserRole.OWNER);
         try {
             Field field = User.class.getDeclaredField("id");
             field.setAccessible(true);
