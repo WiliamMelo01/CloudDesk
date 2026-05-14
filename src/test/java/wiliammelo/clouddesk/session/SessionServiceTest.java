@@ -7,7 +7,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.core.SetOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import wiliammelo.clouddesk.auth.AuthenticationException;
 import wiliammelo.clouddesk.security.JwtClaims;
 import wiliammelo.clouddesk.security.TokenType;
@@ -39,10 +38,10 @@ class SessionServiceTest {
     private final StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
     private final ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
     private final SetOperations<String, String> setOperations = mock(SetOperations.class);
-    private final PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
+    private final RefreshTokenHasher refreshTokenHasher = new RefreshTokenHasher();
     private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
     private final Clock clock = Clock.fixed(Instant.parse("2030-05-14T18:00:00Z"), ZoneOffset.UTC);
-    private final SessionService sessionService = new SessionService(redisTemplate, objectMapper, passwordEncoder, clock);
+    private final SessionService sessionService = new SessionService(redisTemplate, objectMapper, refreshTokenHasher, clock);
 
     private final UUID userId = UUID.fromString("11111111-1111-1111-1111-111111111111");
     private final UUID sessionId = UUID.fromString("22222222-2222-2222-2222-222222222222");
@@ -62,7 +61,6 @@ class SessionServiceTest {
     @Test
     void storesSessionInRedisAndIndexesItByUser() {
         User user = user();
-        when(passwordEncoder.encode("refresh-token")).thenReturn("hashed-refresh-token");
 
         sessionService.storeSession(
                 user,
@@ -79,9 +77,8 @@ class SessionServiceTest {
 
     @Test
     void validatesRefreshSessionAndUpdatesLastUsedAt() throws Exception {
-        SessionRecord session = session(sessionId, userId, "hashed-refresh-token", Instant.parse("2030-05-14T17:00:00Z"));
+        SessionRecord session = session(sessionId, userId, refreshTokenHasher.hash("refresh-token"), Instant.parse("2030-05-14T17:00:00Z"));
         when(valueOperations.get("session:" + sessionId)).thenReturn(write(session));
-        when(passwordEncoder.matches("refresh-token", "hashed-refresh-token")).thenReturn(true);
 
         SessionRecord result = sessionService.validateRefreshSession(claims(sessionId, userId), "refresh-token");
 
@@ -111,9 +108,8 @@ class SessionServiceTest {
 
     @Test
     void rejectsRefreshSessionWhenTokenHashDoesNotMatch() throws Exception {
-        SessionRecord session = session(sessionId, userId, "hashed-refresh-token", Instant.parse("2030-05-14T17:00:00Z"));
+        SessionRecord session = session(sessionId, userId, refreshTokenHasher.hash("other-refresh-token"), Instant.parse("2030-05-14T17:00:00Z"));
         when(valueOperations.get("session:" + sessionId)).thenReturn(write(session));
-        when(passwordEncoder.matches("refresh-token", "hashed-refresh-token")).thenReturn(false);
 
         assertThatThrownBy(() -> sessionService.validateRefreshSession(claims(sessionId, userId), "refresh-token"))
                 .isInstanceOf(AuthenticationException.class)
@@ -183,9 +179,8 @@ class SessionServiceTest {
 
     @Test
     void revokesCurrentSessionFromRefreshToken() throws Exception {
-        SessionRecord session = session(sessionId, userId, "hashed-refresh-token", Instant.parse("2030-05-14T17:00:00Z"));
+        SessionRecord session = session(sessionId, userId, refreshTokenHasher.hash("refresh-token"), Instant.parse("2030-05-14T17:00:00Z"));
         when(valueOperations.get("session:" + sessionId)).thenReturn(write(session));
-        when(passwordEncoder.matches("refresh-token", "hashed-refresh-token")).thenReturn(true);
 
         sessionService.revokeCurrentSession(claims(sessionId, userId), "refresh-token");
 
@@ -233,8 +228,7 @@ class SessionServiceTest {
     @Test
     void throwsWhenSessionCannotBeSerialized() throws Exception {
         ObjectMapper brokenMapper = mock(ObjectMapper.class);
-        SessionService brokenService = new SessionService(redisTemplate, brokenMapper, passwordEncoder, clock);
-        when(passwordEncoder.encode("refresh-token")).thenReturn("hash");
+        SessionService brokenService = new SessionService(redisTemplate, brokenMapper, refreshTokenHasher, clock);
         when(brokenMapper.writeValueAsString(any(SessionRecord.class))).thenThrow(new JsonProcessingException("broken") {
         });
 
@@ -259,7 +253,7 @@ class SessionServiceTest {
 
     @Test
     void productionConstructorCreatesService() {
-        assertThat(new SessionService(redisTemplate, passwordEncoder).newSessionId()).isNotNull();
+        assertThat(new SessionService(redisTemplate, refreshTokenHasher).newSessionId()).isNotNull();
     }
 
     private JwtClaims claims(UUID id, UUID ownerId) {

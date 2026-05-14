@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import wiliammelo.clouddesk.auth.AuthenticationException;
 import wiliammelo.clouddesk.security.JwtClaims;
@@ -29,23 +28,23 @@ public class SessionService {
 
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
-    private final PasswordEncoder passwordEncoder;
+    private final RefreshTokenHasher refreshTokenHasher;
     private final Clock clock;
 
     @Autowired
-    public SessionService(StringRedisTemplate redisTemplate, PasswordEncoder passwordEncoder) {
-        this(redisTemplate, new ObjectMapper().findAndRegisterModules(), passwordEncoder, Clock.systemUTC());
+    public SessionService(StringRedisTemplate redisTemplate, RefreshTokenHasher refreshTokenHasher) {
+        this(redisTemplate, new ObjectMapper().findAndRegisterModules(), refreshTokenHasher, Clock.systemUTC());
     }
 
     public SessionService(
             StringRedisTemplate redisTemplate,
             ObjectMapper objectMapper,
-            PasswordEncoder passwordEncoder,
+            RefreshTokenHasher refreshTokenHasher,
             Clock clock
     ) {
         this.redisTemplate = redisTemplate;
         this.objectMapper = objectMapper;
-        this.passwordEncoder = passwordEncoder;
+        this.refreshTokenHasher = refreshTokenHasher;
         this.clock = clock;
     }
 
@@ -66,7 +65,7 @@ public class SessionService {
                 user.getId(),
                 user.getEmail(),
                 user.getRole(),
-                passwordEncoder.encode(refreshToken),
+                refreshTokenHasher.hash(refreshToken),
                 now,
                 expiresAt,
                 now,
@@ -83,7 +82,7 @@ public class SessionService {
     public SessionRecord validateRefreshSession(JwtClaims claims, String refreshToken) {
         SessionRecord session = findById(claims.sessionId())
                 .filter(found -> found.userId().equals(claims.userId()))
-                .filter(found -> passwordEncoder.matches(refreshToken, found.refreshTokenHash()))
+                .filter(found -> refreshTokenHasher.matches(refreshToken, found.refreshTokenHash()))
                 .orElseThrow(() -> new AuthenticationException("Invalid session."));
 
         SessionRecord usedSession = session.markUsed(clock.instant());
