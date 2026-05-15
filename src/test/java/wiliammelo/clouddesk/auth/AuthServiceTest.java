@@ -67,11 +67,7 @@ class AuthServiceTest {
         when(userRepository.findByEmailIgnoreCase("agent@cloud.test")).thenReturn(Optional.of(agent));
         when(sessionService.newSessionId()).thenReturn(sessionId);
 
-        LoginResult result = authService.login(
-                new LoginRequest(" Agent@Cloud.Test ", "password123"),
-                clientRequestInfo,
-                UserRole.AGENT
-        );
+        LoginResult result = authService.login(new LoginRequest(" Agent@Cloud.Test ", "password123"), clientRequestInfo);
 
         assertThat(result.response().email()).isEqualTo("agent@cloud.test");
         assertThat(result.response().role()).isEqualTo(UserRole.AGENT);
@@ -99,11 +95,12 @@ class AuthServiceTest {
     }
 
     @Test
-    void rejectsNonOwnerUser() {
+    void rejectsInactiveAgent() {
         User agent = user(UserRole.AGENT, passwordEncoder.encode("password123"));
-        when(userRepository.findByEmailIgnoreCase("owner@cloud.test")).thenReturn(Optional.of(agent));
+        agent.deactivate();
+        when(userRepository.findByEmailIgnoreCase("agent@cloud.test")).thenReturn(Optional.of(agent));
 
-        assertThatThrownBy(() -> authService.login(new LoginRequest("owner@cloud.test", "password123"), clientRequestInfo))
+        assertThatThrownBy(() -> authService.login(new LoginRequest("agent@cloud.test", "password123"), clientRequestInfo))
                 .isInstanceOf(AuthenticationException.class)
                 .hasMessage("Invalid credentials.");
     }
@@ -115,19 +112,6 @@ class AuthServiceTest {
 
         assertThatThrownBy(() -> authService.login(new LoginRequest("owner@cloud.test", "wrongPassword"), clientRequestInfo))
                 .isInstanceOf(AuthenticationException.class)
-                .hasMessage("Invalid credentials.");
-    }
-
-    @Test
-    void rejectsAgentLoginForOwnerEndpoint() {
-        User owner = user(UserRole.OWNER, passwordEncoder.encode("password123"));
-        when(userRepository.findByEmailIgnoreCase("agent@cloud.test")).thenReturn(Optional.of(owner));
-
-        assertThatThrownBy(() -> authService.login(
-                new LoginRequest("agent@cloud.test", "password123"),
-                clientRequestInfo,
-                UserRole.AGENT
-        )).isInstanceOf(AuthenticationException.class)
                 .hasMessage("Invalid credentials.");
     }
 

@@ -37,15 +37,9 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public LoginResult login(LoginRequest request, ClientRequestInfo clientRequestInfo) {
-        return login(request, clientRequestInfo, UserRole.OWNER);
-    }
-
-    @Transactional(readOnly = true)
-    public LoginResult login(LoginRequest request, ClientRequestInfo clientRequestInfo, UserRole expectedRole) {
         String email = request.email().trim().toLowerCase();
         User user = userRepository.findByEmailIgnoreCase(email)
                 .filter(User::isActive)
-                .filter(foundUser -> foundUser.getRole() == expectedRole)
                 .orElseThrow(() -> new AuthenticationException("Invalid credentials."));
 
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
