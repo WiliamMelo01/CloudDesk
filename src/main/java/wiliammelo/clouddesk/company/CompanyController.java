@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import wiliammelo.clouddesk.security.JwtPrincipal;
 
 import java.util.List;
 import java.util.UUID;
@@ -42,8 +44,11 @@ public class CompanyController {
     @ApiResponse(responseCode = "401", description = "Missing or invalid access token")
     @ApiResponse(responseCode = "403", description = "Authenticated user is not an owner")
     @ApiResponse(responseCode = "409", description = "Portal slug already in use")
-    public CompanyResponse create(@Valid @RequestBody CompanyCreateRequest request) {
-        return companyService.create(request);
+    public CompanyResponse create(
+            @AuthenticationPrincipal JwtPrincipal principal,
+            @Valid @RequestBody CompanyCreateRequest request
+    ) {
+        return companyService.create(principal.userId(), request);
     }
 
     @GetMapping
@@ -51,8 +56,8 @@ public class CompanyController {
     @ApiResponse(responseCode = "200", description = "Companies returned")
     @ApiResponse(responseCode = "401", description = "Missing or invalid access token")
     @ApiResponse(responseCode = "403", description = "Authenticated user is not an owner")
-    public List<CompanyResponse> list() {
-        return companyService.list();
+    public List<CompanyResponse> list(@AuthenticationPrincipal JwtPrincipal principal) {
+        return companyService.list(principal.userId());
     }
 
     @GetMapping("/{id}")
@@ -61,8 +66,8 @@ public class CompanyController {
     @ApiResponse(responseCode = "401", description = "Missing or invalid access token")
     @ApiResponse(responseCode = "403", description = "Authenticated user is not an owner")
     @ApiResponse(responseCode = "404", description = "Company not found")
-    public CompanyResponse get(@PathVariable UUID id) {
-        return companyService.get(id);
+    public CompanyResponse get(@AuthenticationPrincipal JwtPrincipal principal, @PathVariable UUID id) {
+        return companyService.get(principal.userId(), id);
     }
 
     @PutMapping("/{id}")
@@ -73,8 +78,12 @@ public class CompanyController {
     @ApiResponse(responseCode = "403", description = "Authenticated user is not an owner")
     @ApiResponse(responseCode = "404", description = "Company not found")
     @ApiResponse(responseCode = "409", description = "Portal slug already in use")
-    public CompanyResponse update(@PathVariable UUID id, @Valid @RequestBody CompanyUpdateRequest request) {
-        return companyService.update(id, request);
+    public CompanyResponse update(
+            @AuthenticationPrincipal JwtPrincipal principal,
+            @PathVariable UUID id,
+            @Valid @RequestBody CompanyUpdateRequest request
+    ) {
+        return companyService.update(principal.userId(), id, request);
     }
 
     @DeleteMapping("/{id}")
@@ -84,8 +93,8 @@ public class CompanyController {
     @ApiResponse(responseCode = "401", description = "Missing or invalid access token")
     @ApiResponse(responseCode = "403", description = "Authenticated user is not an owner")
     @ApiResponse(responseCode = "404", description = "Company not found")
-    public void delete(@PathVariable UUID id) {
-        companyService.delete(id);
+    public void delete(@AuthenticationPrincipal JwtPrincipal principal, @PathVariable UUID id) {
+        companyService.delete(principal.userId(), id);
     }
 
     @PostMapping(value = "/{id}/logo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -95,8 +104,12 @@ public class CompanyController {
     @ApiResponse(responseCode = "401", description = "Missing or invalid access token")
     @ApiResponse(responseCode = "403", description = "Authenticated user is not an owner")
     @ApiResponse(responseCode = "404", description = "Company not found")
-    public CompanyResponse uploadLogo(@PathVariable UUID id, @RequestPart("file") MultipartFile file) {
-        return companyService.uploadLogo(id, file);
+    public CompanyResponse uploadLogo(
+            @AuthenticationPrincipal JwtPrincipal principal,
+            @PathVariable UUID id,
+            @RequestPart("file") MultipartFile file
+    ) {
+        return companyService.uploadLogo(principal.userId(), id, file);
     }
 
     @DeleteMapping("/{id}/logo")
@@ -106,7 +119,7 @@ public class CompanyController {
     @ApiResponse(responseCode = "401", description = "Missing or invalid access token")
     @ApiResponse(responseCode = "403", description = "Authenticated user is not an owner")
     @ApiResponse(responseCode = "404", description = "Company not found")
-    public void deleteLogo(@PathVariable UUID id) {
-        companyService.deleteLogo(id);
+    public void deleteLogo(@AuthenticationPrincipal JwtPrincipal principal, @PathVariable UUID id) {
+        companyService.deleteLogo(principal.userId(), id);
     }
 }

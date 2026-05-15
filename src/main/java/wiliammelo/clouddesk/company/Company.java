@@ -5,11 +5,18 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import wiliammelo.clouddesk.user.User;
 
 import java.time.Instant;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -35,6 +42,18 @@ public class Company {
     @Column(length = 500)
     private String logoUrl;
 
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "owner_id", nullable = false, updatable = false)
+    private User owner;
+
+    @ManyToMany
+    @JoinTable(
+            name = "company_agents",
+            joinColumns = @JoinColumn(name = "company_id"),
+            inverseJoinColumns = @JoinColumn(name = "agent_id")
+    )
+    private Set<User> agents = new LinkedHashSet<>();
+
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -44,9 +63,10 @@ public class Company {
     protected Company() {
     }
 
-    public Company(String name, String portalSlug) {
+    public Company(String name, String portalSlug, User owner) {
         this.name = name;
         this.portalSlug = portalSlug;
+        this.owner = owner;
     }
 
     @PrePersist
@@ -99,6 +119,24 @@ public class Company {
 
     public void setLogoUrl(String logoUrl) {
         this.logoUrl = logoUrl;
+    }
+
+    public User getOwner() {
+        return owner;
+    }
+
+    public Set<User> getAgents() {
+        return agents;
+    }
+
+    public void addAgent(User agent) {
+        agents.add(agent);
+        agent.getCompanies().add(this);
+    }
+
+    public void removeAgent(User agent) {
+        agents.remove(agent);
+        agent.getCompanies().remove(this);
     }
 
     public void deactivate() {

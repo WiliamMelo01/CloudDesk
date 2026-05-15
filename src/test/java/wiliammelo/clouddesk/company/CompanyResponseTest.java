@@ -12,7 +12,7 @@ class CompanyResponseTest {
 
     @Test
     void mapsCompanyToResponse() throws Exception {
-        Company company = new Company("ByteCare", "bytecare");
+        Company company = new Company("ByteCare", "bytecare", new wiliammelo.clouddesk.user.User("Owner", "owner@cloud.test", "hash", wiliammelo.clouddesk.user.UserRole.OWNER));
         UUID id = UUID.randomUUID();
         Instant createdAt = Instant.parse("2026-05-14T18:00:00Z");
         Instant updatedAt = Instant.parse("2026-05-14T19:00:00Z");

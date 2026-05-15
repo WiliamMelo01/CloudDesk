@@ -6,6 +6,9 @@ import wiliammelo.clouddesk.shared.ConflictException;
 import wiliammelo.clouddesk.shared.ResourceNotFoundException;
 import wiliammelo.clouddesk.shared.BadRequestException;
 import wiliammelo.clouddesk.storage.FileStorageService;
+import wiliammelo.clouddesk.user.User;
+import wiliammelo.clouddesk.user.UserRepository;
+import wiliammelo.clouddesk.user.UserRole;
 
 import java.io.IOException;
 import java.util.List;
@@ -26,14 +29,18 @@ class CompanyServiceTest {
 
     private final CompanyRepository companyRepository = mock(CompanyRepository.class);
     private final FileStorageService fileStorageService = mock(FileStorageService.class);
-    private final CompanyService companyService = new CompanyService(companyRepository, fileStorageService);
+    private final UserRepository userRepository = mock(UserRepository.class);
+    private final CompanyService companyService = new CompanyService(companyRepository, fileStorageService, userRepository);
+    private final UUID ownerId = UUID.fromString("11111111-1111-1111-1111-111111111111");
 
     @Test
     void createsCompanyWithNormalizedPortalSlug() {
+        User owner = owner();
         when(companyRepository.existsByPortalSlugIgnoreCase("bytecare")).thenReturn(false);
+        when(userRepository.findByIdAndRole(ownerId, UserRole.OWNER)).thenReturn(Optional.of(owner));
         when(companyRepository.save(any(Company.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        CompanyResponse response = companyService.create(new CompanyCreateRequest(
+        CompanyResponse response = companyService.create(ownerId, new CompanyCreateRequest(
                 " ByteCare ",
                 " ByteCare "
         ));
@@ -42,6 +49,7 @@ class CompanyServiceTest {
         assertThat(response.portalSlug()).isEqualTo("bytecare");
         assertThat(response.portalPath()).isEqualTo("/portal/bytecare");
         assertThat(response.active()).isTrue();
+        assertThat(owner.getManagedCompanies()).isEmpty();
         verify(companyRepository).save(any(Company.class));
     }
 
@@ -49,7 +57,7 @@ class CompanyServiceTest {
     void rejectsCreateWhenPortalSlugAlreadyExists() {
         when(companyRepository.existsByPortalSlugIgnoreCase("bytecare")).thenReturn(true);
 
-        assertThatThrownBy(() -> companyService.create(new CompanyCreateRequest("ByteCare", "bytecare")))
+        assertThatThrownBy(() -> companyService.create(ownerId, new CompanyCreateRequest("ByteCare", "bytecare")))
                 .isInstanceOf(ConflictException.class)
                 .hasMessage("Portal slug already in use.");
 
@@ -58,10 +66,10 @@ class CompanyServiceTest {
 
     @Test
     void listsActiveCompanies() {
-        Company company = new Company("ByteCare", "bytecare");
-        when(companyRepository.findAllByActiveTrueOrderByCreatedAtDesc()).thenReturn(List.of(company));
+        Company company = company();
+        when(companyRepository.findAllByOwnerIdAndActiveTrueOrderByCreatedAtDesc(ownerId)).thenReturn(List.of(company));
 
-        List<CompanyResponse> companies = companyService.list();
+        List<CompanyResponse> companies = companyService.list(ownerId);
 
         assertThat(companies).hasSize(1);
         assertThat(companies.getFirst().portalSlug()).isEqualTo("bytecare");
@@ -70,10 +78,10 @@ class CompanyServiceTest {
     @Test
     void getsCompanyById() {
         UUID id = UUID.randomUUID();
-        Company company = new Company("ByteCare", "bytecare");
-        when(companyRepository.findById(id)).thenReturn(Optional.of(company));
+        Company company = company();
+        when(companyRepository.findByIdAndOwnerId(id, ownerId)).thenReturn(Optional.of(company));
 
-        CompanyResponse response = companyService.get(id);
+        CompanyResponse response = companyService.get(ownerId, id);
 
         assertThat(response.name()).isEqualTo("ByteCare");
     }
@@ -81,9 +89,9 @@ class CompanyServiceTest {
     @Test
     void rejectsGetWhenCompanyDoesNotExist() {
         UUID id = UUID.randomUUID();
-        when(companyRepository.findById(id)).thenReturn(Optional.empty());
+        when(companyRepository.findByIdAndOwnerId(id, ownerId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> companyService.get(id))
+        assertThatThrownBy(() -> companyService.get(ownerId, id))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Company not found.");
     }
@@ -91,11 +99,11 @@ class CompanyServiceTest {
     @Test
     void rejectsGetWhenCompanyIsInactive() {
         UUID id = UUID.randomUUID();
-        Company company = new Company("ByteCare", "bytecare");
+        Company company = company();
         company.deactivate();
-        when(companyRepository.findById(id)).thenReturn(Optional.of(company));
+        when(companyRepository.findByIdAndOwnerId(id, ownerId)).thenReturn(Optional.of(company));
 
-        assertThatThrownBy(() -> companyService.get(id))
+        assertThatThrownBy(() -> companyService.get(ownerId, id))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Company not found.");
     }
@@ -103,11 +111,11 @@ class CompanyServiceTest {
     @Test
     void updatesCompany() {
         UUID id = UUID.randomUUID();
-        Company company = new Company("ByteCare", "bytecare");
-        when(companyRepository.findById(id)).thenReturn(Optional.of(company));
+        Company company = company();
+        when(companyRepository.findByIdAndOwnerId(id, ownerId)).thenReturn(Optional.of(company));
         when(companyRepository.existsByPortalSlugIgnoreCaseAndIdNot("updated", id)).thenReturn(false);
 
-        CompanyResponse response = companyService.update(id, new CompanyUpdateRequest(
+        CompanyResponse response = companyService.update(ownerId, id, new CompanyUpdateRequest(
                 " Updated ",
                 " Updated "
         ));
@@ -121,11 +129,11 @@ class CompanyServiceTest {
     @Test
     void rejectsUpdateWhenPortalSlugAlreadyExists() {
         UUID id = UUID.randomUUID();
-        Company company = new Company("ByteCare", "bytecare");
-        when(companyRepository.findById(id)).thenReturn(Optional.of(company));
+        Company company = company();
+        when(companyRepository.findByIdAndOwnerId(id, ownerId)).thenReturn(Optional.of(company));
         when(companyRepository.existsByPortalSlugIgnoreCaseAndIdNot("used", id)).thenReturn(true);
 
-        assertThatThrownBy(() -> companyService.update(id, new CompanyUpdateRequest("ByteCare", "used")))
+        assertThatThrownBy(() -> companyService.update(ownerId, id, new CompanyUpdateRequest("ByteCare", "used")))
                 .isInstanceOf(ConflictException.class)
                 .hasMessage("Portal slug already in use.");
     }
@@ -133,10 +141,10 @@ class CompanyServiceTest {
     @Test
     void deletesCompanyByDeactivatingIt() {
         UUID id = UUID.randomUUID();
-        Company company = new Company("ByteCare", "bytecare");
-        when(companyRepository.findById(id)).thenReturn(Optional.of(company));
+        Company company = company();
+        when(companyRepository.findByIdAndOwnerId(id, ownerId)).thenReturn(Optional.of(company));
 
-        companyService.delete(id);
+        companyService.delete(ownerId, id);
 
         assertThat(company.isActive()).isFalse();
     }
@@ -144,13 +152,13 @@ class CompanyServiceTest {
     @Test
     void uploadsCompanyLogo() {
         UUID id = UUID.randomUUID();
-        Company company = new Company("ByteCare", "bytecare");
+        Company company = company();
         MockMultipartFile file = new MockMultipartFile("file", "Logo Image.png", "image/png", "logo".getBytes());
-        when(companyRepository.findById(id)).thenReturn(Optional.of(company));
+        when(companyRepository.findByIdAndOwnerId(id, ownerId)).thenReturn(Optional.of(company));
         when(fileStorageService.upload(anyString(), any(), anyLong(), anyString()))
                 .thenReturn("http://localhost:4566/clouddesk-company-assets/companies/logo.png");
 
-        CompanyResponse response = companyService.uploadLogo(id, file);
+        CompanyResponse response = companyService.uploadLogo(ownerId, id, file);
 
         assertThat(response.logoUrl()).isEqualTo("http://localhost:4566/clouddesk-company-assets/companies/logo.png");
         assertThat(company.getLogoObjectKey()).startsWith("companies/" + id + "/logo/");
@@ -161,13 +169,13 @@ class CompanyServiceTest {
     @Test
     void uploadsCompanyLogoWithDefaultFilenameWhenOriginalFilenameIsNull() {
         UUID id = UUID.randomUUID();
-        Company company = new Company("ByteCare", "bytecare");
+        Company company = company();
         MockMultipartFile file = new NullOriginalFilenameMultipartFile();
-        when(companyRepository.findById(id)).thenReturn(Optional.of(company));
+        when(companyRepository.findByIdAndOwnerId(id, ownerId)).thenReturn(Optional.of(company));
         when(fileStorageService.upload(anyString(), any(), anyLong(), anyString()))
                 .thenReturn("http://localhost/logo.png");
 
-        companyService.uploadLogo(id, file);
+        companyService.uploadLogo(ownerId, id, file);
 
         assertThat(company.getLogoObjectKey()).endsWith("-logo");
     }
@@ -175,13 +183,13 @@ class CompanyServiceTest {
     @Test
     void uploadsCompanyLogoWithDefaultFilenameWhenOriginalFilenameIsBlank() {
         UUID id = UUID.randomUUID();
-        Company company = new Company("ByteCare", "bytecare");
+        Company company = company();
         MockMultipartFile file = new MockMultipartFile("file", " ", "image/png", "logo".getBytes());
-        when(companyRepository.findById(id)).thenReturn(Optional.of(company));
+        when(companyRepository.findByIdAndOwnerId(id, ownerId)).thenReturn(Optional.of(company));
         when(fileStorageService.upload(anyString(), any(), anyLong(), anyString()))
                 .thenReturn("http://localhost/logo.png");
 
-        companyService.uploadLogo(id, file);
+        companyService.uploadLogo(ownerId, id, file);
 
         assertThat(company.getLogoObjectKey()).endsWith("-logo");
     }
@@ -189,14 +197,14 @@ class CompanyServiceTest {
     @Test
     void uploadsCompanyLogoAndDeletesPreviousLogo() {
         UUID id = UUID.randomUUID();
-        Company company = new Company("ByteCare", "bytecare");
+        Company company = company();
         company.setLogoObjectKey("companies/id/logo/old.png");
         MockMultipartFile file = new MockMultipartFile("file", "logo.png", "image/png", "logo".getBytes());
-        when(companyRepository.findById(id)).thenReturn(Optional.of(company));
+        when(companyRepository.findByIdAndOwnerId(id, ownerId)).thenReturn(Optional.of(company));
         when(fileStorageService.upload(anyString(), any(), anyLong(), anyString()))
                 .thenReturn("http://localhost/logo.png");
 
-        companyService.uploadLogo(id, file);
+        companyService.uploadLogo(ownerId, id, file);
 
         verify(fileStorageService).delete("companies/id/logo/old.png");
     }
@@ -204,14 +212,14 @@ class CompanyServiceTest {
     @Test
     void uploadsCompanyLogoWithoutDeletingBlankPreviousLogoKey() {
         UUID id = UUID.randomUUID();
-        Company company = new Company("ByteCare", "bytecare");
+        Company company = company();
         company.setLogoObjectKey(" ");
         MockMultipartFile file = new MockMultipartFile("file", "logo.png", "image/png", "logo".getBytes());
-        when(companyRepository.findById(id)).thenReturn(Optional.of(company));
+        when(companyRepository.findByIdAndOwnerId(id, ownerId)).thenReturn(Optional.of(company));
         when(fileStorageService.upload(anyString(), any(), anyLong(), anyString()))
                 .thenReturn("http://localhost/logo.png");
 
-        companyService.uploadLogo(id, file);
+        companyService.uploadLogo(ownerId, id, file);
 
         verify(fileStorageService, never()).delete(anyString());
     }
@@ -219,9 +227,9 @@ class CompanyServiceTest {
     @Test
     void rejectsMissingLogo() {
         UUID id = UUID.randomUUID();
-        when(companyRepository.findById(id)).thenReturn(Optional.of(new Company("ByteCare", "bytecare")));
+        when(companyRepository.findByIdAndOwnerId(id, ownerId)).thenReturn(Optional.of(company()));
 
-        assertThatThrownBy(() -> companyService.uploadLogo(id, null))
+        assertThatThrownBy(() -> companyService.uploadLogo(ownerId, id, null))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage("Logo file is required.");
     }
@@ -230,9 +238,9 @@ class CompanyServiceTest {
     void rejectsEmptyLogo() {
         UUID id = UUID.randomUUID();
         MockMultipartFile file = new MockMultipartFile("file", "logo.png", "image/png", new byte[0]);
-        when(companyRepository.findById(id)).thenReturn(Optional.of(new Company("ByteCare", "bytecare")));
+        when(companyRepository.findByIdAndOwnerId(id, ownerId)).thenReturn(Optional.of(company()));
 
-        assertThatThrownBy(() -> companyService.uploadLogo(id, file))
+        assertThatThrownBy(() -> companyService.uploadLogo(ownerId, id, file))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage("Logo file is required.");
     }
@@ -241,9 +249,9 @@ class CompanyServiceTest {
     void rejectsNonImageLogo() {
         UUID id = UUID.randomUUID();
         MockMultipartFile file = new MockMultipartFile("file", "logo.txt", "text/plain", "logo".getBytes());
-        when(companyRepository.findById(id)).thenReturn(Optional.of(new Company("ByteCare", "bytecare")));
+        when(companyRepository.findByIdAndOwnerId(id, ownerId)).thenReturn(Optional.of(company()));
 
-        assertThatThrownBy(() -> companyService.uploadLogo(id, file))
+        assertThatThrownBy(() -> companyService.uploadLogo(ownerId, id, file))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage("Logo file must be an image.");
     }
@@ -252,9 +260,9 @@ class CompanyServiceTest {
     void rejectsLogoWithoutContentType() {
         UUID id = UUID.randomUUID();
         MockMultipartFile file = new MockMultipartFile("file", "logo", null, "logo".getBytes());
-        when(companyRepository.findById(id)).thenReturn(Optional.of(new Company("ByteCare", "bytecare")));
+        when(companyRepository.findByIdAndOwnerId(id, ownerId)).thenReturn(Optional.of(company()));
 
-        assertThatThrownBy(() -> companyService.uploadLogo(id, file))
+        assertThatThrownBy(() -> companyService.uploadLogo(ownerId, id, file))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage("Logo file must be an image.");
     }
@@ -263,9 +271,9 @@ class CompanyServiceTest {
     void rejectsLogoWhenFileCannotBeRead() throws IOException {
         UUID id = UUID.randomUUID();
         MultipartFileStub file = new MultipartFileStub();
-        when(companyRepository.findById(id)).thenReturn(Optional.of(new Company("ByteCare", "bytecare")));
+        when(companyRepository.findByIdAndOwnerId(id, ownerId)).thenReturn(Optional.of(company()));
 
-        assertThatThrownBy(() -> companyService.uploadLogo(id, file))
+        assertThatThrownBy(() -> companyService.uploadLogo(ownerId, id, file))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage("Unable to read logo file.");
     }
@@ -273,12 +281,12 @@ class CompanyServiceTest {
     @Test
     void deletesCompanyLogo() {
         UUID id = UUID.randomUUID();
-        Company company = new Company("ByteCare", "bytecare");
+        Company company = company();
         company.setLogoObjectKey("companies/id/logo/logo.png");
         company.setLogoUrl("http://localhost/logo.png");
-        when(companyRepository.findById(id)).thenReturn(Optional.of(company));
+        when(companyRepository.findByIdAndOwnerId(id, ownerId)).thenReturn(Optional.of(company));
 
-        companyService.deleteLogo(id);
+        companyService.deleteLogo(ownerId, id);
 
         verify(fileStorageService).delete("companies/id/logo/logo.png");
         assertThat(company.getLogoObjectKey()).isNull();
@@ -288,12 +296,30 @@ class CompanyServiceTest {
     @Test
     void deletesCompanyLogoWhenNoLogoExists() {
         UUID id = UUID.randomUUID();
-        Company company = new Company("ByteCare", "bytecare");
-        when(companyRepository.findById(id)).thenReturn(Optional.of(company));
+        Company company = company();
+        when(companyRepository.findByIdAndOwnerId(id, ownerId)).thenReturn(Optional.of(company));
 
-        companyService.deleteLogo(id);
+        companyService.deleteLogo(ownerId, id);
 
         verify(fileStorageService, never()).delete(anyString());
+    }
+
+    @Test
+    void rejectsCreateWhenOwnerDoesNotExist() {
+        when(companyRepository.existsByPortalSlugIgnoreCase("bytecare")).thenReturn(false);
+        when(userRepository.findByIdAndRole(ownerId, UserRole.OWNER)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> companyService.create(ownerId, new CompanyCreateRequest("ByteCare", "bytecare")))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("Owner not found.");
+    }
+
+    private Company company() {
+        return new Company("ByteCare", "bytecare", owner());
+    }
+
+    private User owner() {
+        return new User("Owner", "owner@cloud.test", "hash", UserRole.OWNER);
     }
 
     @SuppressWarnings("NullableProblems")

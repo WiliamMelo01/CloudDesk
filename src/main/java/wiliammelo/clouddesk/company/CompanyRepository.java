@@ -3,6 +3,7 @@ package wiliammelo.clouddesk.company;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface CompanyRepository extends JpaRepository<Company, UUID> {
@@ -12,4 +13,10 @@ public interface CompanyRepository extends JpaRepository<Company, UUID> {
     boolean existsByPortalSlugIgnoreCaseAndIdNot(String portalSlug, UUID id);
 
     List<Company> findAllByActiveTrueOrderByCreatedAtDesc();
+
+    List<Company> findAllByOwnerIdAndActiveTrueOrderByCreatedAtDesc(UUID ownerId);
+
+    Optional<Company> findByIdAndOwnerId(UUID id, UUID ownerId);
+
+    boolean existsByIdAndAgentsId(UUID companyId, UUID agentId);
 }

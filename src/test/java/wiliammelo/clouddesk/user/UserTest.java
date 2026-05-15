@@ -18,6 +18,8 @@ class UserTest {
         assertThat(user.getPasswordHash()).isEqualTo("hash");
         assertThat(user.getRole()).isEqualTo(UserRole.OWNER);
         assertThat(user.isActive()).isTrue();
+        assertThat(user.getManagedCompanies()).isEmpty();
+        assertThat(user.getCompanies()).isEmpty();
         assertThat(user.getCreatedAt()).isNotNull();
         assertThat(user.getUpdatedAt()).isNotNull();
 

@@ -7,6 +7,9 @@ import wiliammelo.clouddesk.shared.BadRequestException;
 import wiliammelo.clouddesk.shared.ConflictException;
 import wiliammelo.clouddesk.shared.ResourceNotFoundException;
 import wiliammelo.clouddesk.storage.FileStorageService;
+import wiliammelo.clouddesk.user.User;
+import wiliammelo.clouddesk.user.UserRepository;
+import wiliammelo.clouddesk.user.UserRole;
 
 import java.io.IOException;
 import java.util.List;
@@ -18,39 +21,45 @@ public class CompanyService {
 
     private final CompanyRepository companyRepository;
     private final FileStorageService fileStorageService;
+    private final UserRepository userRepository;
 
-    public CompanyService(CompanyRepository companyRepository, FileStorageService fileStorageService) {
+    public CompanyService(
+            CompanyRepository companyRepository,
+            FileStorageService fileStorageService,
+            UserRepository userRepository
+    ) {
         this.companyRepository = companyRepository;
         this.fileStorageService = fileStorageService;
+        this.userRepository = userRepository;
     }
 
     @Transactional
-    public CompanyResponse create(CompanyCreateRequest request) {
+    public CompanyResponse create(UUID ownerId, CompanyCreateRequest request) {
         String portalSlug = normalizeSlug(request.portalSlug());
         if (companyRepository.existsByPortalSlugIgnoreCase(portalSlug)) {
             throw new ConflictException("Portal slug already in use.");
         }
 
-        Company company = new Company(request.name().trim(), portalSlug);
+        Company company = new Company(request.name().trim(), portalSlug, findOwner(ownerId));
         return CompanyResponse.from(companyRepository.save(company));
     }
 
     @Transactional(readOnly = true)
-    public List<CompanyResponse> list() {
-        return companyRepository.findAllByActiveTrueOrderByCreatedAtDesc()
+    public List<CompanyResponse> list(UUID ownerId) {
+        return companyRepository.findAllByOwnerIdAndActiveTrueOrderByCreatedAtDesc(ownerId)
                 .stream()
                 .map(CompanyResponse::from)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public CompanyResponse get(UUID id) {
-        return CompanyResponse.from(findCompany(id));
+    public CompanyResponse get(UUID ownerId, UUID id) {
+        return CompanyResponse.from(findCompany(ownerId, id));
     }
 
     @Transactional
-    public CompanyResponse update(UUID id, CompanyUpdateRequest request) {
-        Company company = findCompany(id);
+    public CompanyResponse update(UUID ownerId, UUID id, CompanyUpdateRequest request) {
+        Company company = findCompany(ownerId, id);
         String portalSlug = normalizeSlug(request.portalSlug());
         if (companyRepository.existsByPortalSlugIgnoreCaseAndIdNot(portalSlug, id)) {
             throw new ConflictException("Portal slug already in use.");
@@ -62,14 +71,14 @@ public class CompanyService {
     }
 
     @Transactional
-    public void delete(UUID id) {
-        Company company = findCompany(id);
+    public void delete(UUID ownerId, UUID id) {
+        Company company = findCompany(ownerId, id);
         company.deactivate();
     }
 
     @Transactional
-    public CompanyResponse uploadLogo(UUID id, MultipartFile file) {
-        Company company = findCompany(id);
+    public CompanyResponse uploadLogo(UUID ownerId, UUID id, MultipartFile file) {
+        Company company = findCompany(ownerId, id);
         validateLogo(file);
 
         String objectKey = "companies/" + id + "/logo/" + UUID.randomUUID() + "-" + sanitizeFilename(file.getOriginalFilename());
@@ -90,17 +99,23 @@ public class CompanyService {
     }
 
     @Transactional
-    public void deleteLogo(UUID id) {
-        Company company = findCompany(id);
+    public void deleteLogo(UUID ownerId, UUID id) {
+        Company company = findCompany(ownerId, id);
         deleteExistingLogo(company);
         company.setLogoObjectKey(null);
         company.setLogoUrl(null);
     }
 
-    private Company findCompany(UUID id) {
-        return companyRepository.findById(id)
+    private Company findCompany(UUID ownerId, UUID id) {
+        return companyRepository.findByIdAndOwnerId(id, ownerId)
                 .filter(Company::isActive)
                 .orElseThrow(() -> new ResourceNotFoundException("Company not found."));
+    }
+
+    private User findOwner(UUID ownerId) {
+        return userRepository.findByIdAndRole(ownerId, UserRole.OWNER)
+                .filter(User::isActive)
+                .orElseThrow(() -> new ResourceNotFoundException("Owner not found."));
     }
 
     private String normalizeSlug(String portalSlug) {
