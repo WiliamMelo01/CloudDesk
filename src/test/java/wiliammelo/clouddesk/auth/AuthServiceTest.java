@@ -62,6 +62,23 @@ class AuthServiceTest {
     }
 
     @Test
+    void logsInActiveAgent() {
+        User agent = user(UserRole.AGENT, passwordEncoder.encode("password123"));
+        when(userRepository.findByEmailIgnoreCase("agent@cloud.test")).thenReturn(Optional.of(agent));
+        when(sessionService.newSessionId()).thenReturn(sessionId);
+
+        LoginResult result = authService.login(
+                new LoginRequest(" Agent@Cloud.Test ", "password123"),
+                clientRequestInfo,
+                UserRole.AGENT
+        );
+
+        assertThat(result.response().email()).isEqualTo("agent@cloud.test");
+        assertThat(result.response().role()).isEqualTo(UserRole.AGENT);
+        verify(sessionService).storeSession(agent, sessionId, result.refreshToken().value(), result.refreshToken().expiresAt(), clientRequestInfo);
+    }
+
+    @Test
     void rejectsUnknownEmail() {
         when(userRepository.findByEmailIgnoreCase("missing@cloud.test")).thenReturn(Optional.empty());
 
@@ -98,6 +115,19 @@ class AuthServiceTest {
 
         assertThatThrownBy(() -> authService.login(new LoginRequest("owner@cloud.test", "wrongPassword"), clientRequestInfo))
                 .isInstanceOf(AuthenticationException.class)
+                .hasMessage("Invalid credentials.");
+    }
+
+    @Test
+    void rejectsAgentLoginForOwnerEndpoint() {
+        User owner = user(UserRole.OWNER, passwordEncoder.encode("password123"));
+        when(userRepository.findByEmailIgnoreCase("agent@cloud.test")).thenReturn(Optional.of(owner));
+
+        assertThatThrownBy(() -> authService.login(
+                new LoginRequest("agent@cloud.test", "password123"),
+                clientRequestInfo,
+                UserRole.AGENT
+        )).isInstanceOf(AuthenticationException.class)
                 .hasMessage("Invalid credentials.");
     }
 
@@ -168,7 +198,8 @@ class AuthServiceTest {
     }
 
     private User user(UserRole role, String passwordHash) {
-        User user = new User("Owner", "owner@cloud.test", passwordHash, role);
+        String email = role == UserRole.AGENT ? "agent@cloud.test" : "owner@cloud.test";
+        User user = new User("Owner", email, passwordHash, role);
         setId(user, UUID.fromString("11111111-1111-1111-1111-111111111111"));
         return user;
     }

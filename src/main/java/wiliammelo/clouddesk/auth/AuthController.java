@@ -41,6 +41,34 @@ public class AuthController {
             HttpServletRequest httpServletRequest
     ) {
         LoginResult result = authService.login(request, clientRequestInfo(httpServletRequest));
+        ResponseCookie refreshTokenCookie = refreshTokenCookie(result);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString())
+                .body(result.response());
+    }
+
+    @PostMapping("/api/login/agent")
+    @Operation(
+            summary = "Agent login",
+            description = "Authenticates an agent, returns an access token in the response body, and sets a HttpOnly refresh_token cookie."
+    )
+    @ApiResponse(responseCode = "200", description = "Authenticated")
+    @ApiResponse(responseCode = "400", description = "Invalid request")
+    @ApiResponse(responseCode = "401", description = "Invalid credentials")
+    public ResponseEntity<LoginResponse> loginAgent(
+            @Valid @RequestBody LoginRequest request,
+            HttpServletRequest httpServletRequest
+    ) {
+        LoginResult result = authService.login(request, clientRequestInfo(httpServletRequest), wiliammelo.clouddesk.user.UserRole.AGENT);
+        ResponseCookie refreshTokenCookie = refreshTokenCookie(result);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString())
+                .body(result.response());
+    }
+
+    private ResponseCookie refreshTokenCookie(LoginResult result) {
         ResponseCookie refreshTokenCookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE, result.refreshToken().value())
                 .httpOnly(true)
                 .secure(true)
@@ -48,10 +76,7 @@ public class AuthController {
                 .path("/")
                 .maxAge(Duration.between(Instant.now(), result.refreshToken().expiresAt()))
                 .build();
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString())
-                .body(result.response());
+        return refreshTokenCookie;
     }
 
     private ClientRequestInfo clientRequestInfo(HttpServletRequest request) {
