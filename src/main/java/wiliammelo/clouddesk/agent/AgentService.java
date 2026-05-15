@@ -1,8 +1,9 @@
 package wiliammelo.clouddesk.agent;
 
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import wiliammelo.clouddesk.company.CompanyRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import wiliammelo.clouddesk.shared.ConflictException;
 import wiliammelo.clouddesk.shared.ResourceNotFoundException;
 import wiliammelo.clouddesk.user.User;
@@ -16,10 +17,16 @@ import java.util.UUID;
 public class AgentService {
 
     private final UserRepository userRepository;
+    private final CompanyRepository companyRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public AgentService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public AgentService(
+            UserRepository userRepository,
+            CompanyRepository companyRepository,
+            PasswordEncoder passwordEncoder
+    ) {
         this.userRepository = userRepository;
+        this.companyRepository = companyRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -37,20 +44,20 @@ public class AgentService {
                 UserRole.AGENT
         );
 
-        return AgentResponse.from(userRepository.save(agent));
+        return toResponse(userRepository.save(agent));
     }
 
     @Transactional(readOnly = true)
     public List<AgentResponse> list() {
         return userRepository.findAllByRoleAndActiveTrueOrderByCreatedAtDesc(UserRole.AGENT)
                 .stream()
-                .map(AgentResponse::from)
+                .map(this::toResponse)
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public AgentResponse get(UUID id) {
-        return AgentResponse.from(findAgent(id));
+        return toResponse(findAgent(id));
     }
 
     @Transactional
@@ -67,7 +74,7 @@ public class AgentService {
             agent.setPasswordHash(passwordEncoder.encode(request.password()));
         }
 
-        return AgentResponse.from(agent);
+        return toResponse(agent);
     }
 
     @Transactional
@@ -80,6 +87,14 @@ public class AgentService {
         return userRepository.findByIdAndRole(id, UserRole.AGENT)
                 .filter(User::isActive)
                 .orElseThrow(() -> new ResourceNotFoundException("Agent not found."));
+    }
+
+    private AgentResponse toResponse(User agent) {
+        List<AgentCompanyResponse> companies = companyRepository.findAllByAgentsIdAndActiveTrueOrderByCreatedAtDesc(agent.getId())
+                .stream()
+                .map(AgentCompanyResponse::from)
+                .toList();
+        return AgentResponse.from(agent, companies);
     }
 
     private String normalizeEmail(String email) {

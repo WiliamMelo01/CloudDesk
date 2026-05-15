@@ -2,6 +2,8 @@ package wiliammelo.clouddesk.agent;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import wiliammelo.clouddesk.company.Company;
+import wiliammelo.clouddesk.company.CompanyRepository;
 import wiliammelo.clouddesk.shared.ConflictException;
 import wiliammelo.clouddesk.shared.ResourceNotFoundException;
 import wiliammelo.clouddesk.user.User;
@@ -23,13 +25,15 @@ import static org.mockito.Mockito.when;
 class AgentServiceTest {
 
     private final UserRepository userRepository = mock(UserRepository.class);
+    private final CompanyRepository companyRepository = mock(CompanyRepository.class);
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
-    private final AgentService agentService = new AgentService(userRepository, passwordEncoder);
+    private final AgentService agentService = new AgentService(userRepository, companyRepository, passwordEncoder);
 
     @Test
     void createsAgentWithNormalizedEmailAndHashedPassword() {
         when(userRepository.existsByEmailIgnoreCase("agent@cloud.test")).thenReturn(false);
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(companyRepository.findAllByAgentsIdAndActiveTrueOrderByCreatedAtDesc(any(UUID.class))).thenReturn(List.of());
 
         AgentResponse response = agentService.create(new AgentCreateRequest(
                 " Agent ",
@@ -63,6 +67,7 @@ class AgentServiceTest {
         User agent = agent("Agent", "agent@cloud.test", "hash");
         when(userRepository.findAllByRoleAndActiveTrueOrderByCreatedAtDesc(UserRole.AGENT))
                 .thenReturn(List.of(agent));
+        when(companyRepository.findAllByAgentsIdAndActiveTrueOrderByCreatedAtDesc(agent.getId())).thenReturn(List.of());
 
         List<AgentResponse> agents = agentService.list();
 
@@ -75,10 +80,28 @@ class AgentServiceTest {
         UUID id = UUID.randomUUID();
         User agent = agent("Agent", "agent@cloud.test", "hash");
         when(userRepository.findByIdAndRole(id, UserRole.AGENT)).thenReturn(Optional.of(agent));
+        when(companyRepository.findAllByAgentsIdAndActiveTrueOrderByCreatedAtDesc(agent.getId())).thenReturn(List.of());
 
         AgentResponse response = agentService.get(id);
 
         assertThat(response.name()).isEqualTo("Agent");
+    }
+
+    @Test
+    void getsAgentWithCompanies() {
+        UUID id = UUID.randomUUID();
+        User agent = agent("Agent", "agent@cloud.test", "hash");
+        User owner = new User("Owner", "owner@cloud.test", "hash", UserRole.OWNER);
+        Company company = new Company("Acme", "acme", owner);
+        when(userRepository.findByIdAndRole(id, UserRole.AGENT)).thenReturn(Optional.of(agent));
+        when(companyRepository.findAllByAgentsIdAndActiveTrueOrderByCreatedAtDesc(agent.getId())).thenReturn(List.of(company));
+
+        AgentResponse response = agentService.get(id);
+
+        assertThat(response.companies()).singleElement().satisfies(agentCompany -> {
+            assertThat(agentCompany.name()).isEqualTo("Acme");
+            assertThat(agentCompany.portalSlug()).isEqualTo("acme");
+        });
     }
 
     @Test
@@ -110,6 +133,7 @@ class AgentServiceTest {
         String originalPasswordHash = agent.getPasswordHash();
         when(userRepository.findByIdAndRole(id, UserRole.AGENT)).thenReturn(Optional.of(agent));
         when(userRepository.existsByEmailIgnoreCaseAndIdNot("updated@cloud.test", id)).thenReturn(false);
+        when(companyRepository.findAllByAgentsIdAndActiveTrueOrderByCreatedAtDesc(agent.getId())).thenReturn(List.of());
 
         AgentResponse response = agentService.update(id, new AgentUpdateRequest(
                 " Updated ",
@@ -129,6 +153,7 @@ class AgentServiceTest {
         String originalPasswordHash = agent.getPasswordHash();
         when(userRepository.findByIdAndRole(id, UserRole.AGENT)).thenReturn(Optional.of(agent));
         when(userRepository.existsByEmailIgnoreCaseAndIdNot("updated@cloud.test", id)).thenReturn(false);
+        when(companyRepository.findAllByAgentsIdAndActiveTrueOrderByCreatedAtDesc(agent.getId())).thenReturn(List.of());
 
         agentService.update(id, new AgentUpdateRequest("Updated", "updated@cloud.test", " "));
 
@@ -141,6 +166,7 @@ class AgentServiceTest {
         User agent = agent("Agent", "agent@cloud.test", passwordEncoder.encode("oldPassword123"));
         when(userRepository.findByIdAndRole(id, UserRole.AGENT)).thenReturn(Optional.of(agent));
         when(userRepository.existsByEmailIgnoreCaseAndIdNot("updated@cloud.test", id)).thenReturn(false);
+        when(companyRepository.findAllByAgentsIdAndActiveTrueOrderByCreatedAtDesc(agent.getId())).thenReturn(List.of());
 
         agentService.update(id, new AgentUpdateRequest("Updated", "updated@cloud.test", "newPassword123"));
 

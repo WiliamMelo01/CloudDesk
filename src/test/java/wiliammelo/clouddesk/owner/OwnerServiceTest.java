@@ -2,6 +2,8 @@ package wiliammelo.clouddesk.owner;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import wiliammelo.clouddesk.company.Company;
+import wiliammelo.clouddesk.company.CompanyRepository;
 import wiliammelo.clouddesk.shared.ConflictException;
 import wiliammelo.clouddesk.shared.ResourceNotFoundException;
 import wiliammelo.clouddesk.user.User;
@@ -23,13 +25,15 @@ import static org.mockito.Mockito.when;
 class OwnerServiceTest {
 
     private final UserRepository userRepository = mock(UserRepository.class);
+    private final CompanyRepository companyRepository = mock(CompanyRepository.class);
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
-    private final OwnerService ownerService = new OwnerService(userRepository, passwordEncoder);
+    private final OwnerService ownerService = new OwnerService(userRepository, companyRepository, passwordEncoder);
 
     @Test
     void createsOwnerWithNormalizedEmailAndHashedPassword() {
         when(userRepository.existsByEmailIgnoreCase("owner@cloud.test")).thenReturn(false);
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(companyRepository.findAllByOwnerIdAndActiveTrueOrderByCreatedAtDesc(any(UUID.class))).thenReturn(List.of());
 
         OwnerResponse response = ownerService.create(new OwnerCreateRequest(
                 " Owner ",
@@ -63,6 +67,7 @@ class OwnerServiceTest {
         User owner = owner("Owner", "owner@cloud.test", "hash");
         when(userRepository.findAllByRoleAndActiveTrueOrderByCreatedAtDesc(UserRole.OWNER))
                 .thenReturn(List.of(owner));
+        when(companyRepository.findAllByOwnerIdAndActiveTrueOrderByCreatedAtDesc(owner.getId())).thenReturn(List.of());
 
         List<OwnerResponse> owners = ownerService.list();
 
@@ -75,10 +80,27 @@ class OwnerServiceTest {
         UUID id = UUID.randomUUID();
         User owner = owner("Owner", "owner@cloud.test", "hash");
         when(userRepository.findByIdAndRole(id, UserRole.OWNER)).thenReturn(Optional.of(owner));
+        when(companyRepository.findAllByOwnerIdAndActiveTrueOrderByCreatedAtDesc(owner.getId())).thenReturn(List.of());
 
         OwnerResponse response = ownerService.get(id);
 
         assertThat(response.name()).isEqualTo("Owner");
+    }
+
+    @Test
+    void getsOwnerWithCompanies() {
+        UUID id = UUID.randomUUID();
+        User owner = owner("Owner", "owner@cloud.test", "hash");
+        Company company = new Company("Acme", "acme", owner);
+        when(userRepository.findByIdAndRole(id, UserRole.OWNER)).thenReturn(Optional.of(owner));
+        when(companyRepository.findAllByOwnerIdAndActiveTrueOrderByCreatedAtDesc(owner.getId())).thenReturn(List.of(company));
+
+        OwnerResponse response = ownerService.get(id);
+
+        assertThat(response.companies()).singleElement().satisfies(ownerCompany -> {
+            assertThat(ownerCompany.name()).isEqualTo("Acme");
+            assertThat(ownerCompany.portalSlug()).isEqualTo("acme");
+        });
     }
 
     @Test
@@ -110,6 +132,7 @@ class OwnerServiceTest {
         String originalPasswordHash = owner.getPasswordHash();
         when(userRepository.findByIdAndRole(id, UserRole.OWNER)).thenReturn(Optional.of(owner));
         when(userRepository.existsByEmailIgnoreCaseAndIdNot("updated@cloud.test", id)).thenReturn(false);
+        when(companyRepository.findAllByOwnerIdAndActiveTrueOrderByCreatedAtDesc(owner.getId())).thenReturn(List.of());
 
         OwnerResponse response = ownerService.update(id, new OwnerUpdateRequest(
                 " Updated ",
@@ -129,6 +152,7 @@ class OwnerServiceTest {
         String originalPasswordHash = owner.getPasswordHash();
         when(userRepository.findByIdAndRole(id, UserRole.OWNER)).thenReturn(Optional.of(owner));
         when(userRepository.existsByEmailIgnoreCaseAndIdNot("updated@cloud.test", id)).thenReturn(false);
+        when(companyRepository.findAllByOwnerIdAndActiveTrueOrderByCreatedAtDesc(owner.getId())).thenReturn(List.of());
 
         ownerService.update(id, new OwnerUpdateRequest("Updated", "updated@cloud.test", " "));
 
@@ -141,6 +165,7 @@ class OwnerServiceTest {
         User owner = owner("Owner", "owner@cloud.test", passwordEncoder.encode("oldPassword123"));
         when(userRepository.findByIdAndRole(id, UserRole.OWNER)).thenReturn(Optional.of(owner));
         when(userRepository.existsByEmailIgnoreCaseAndIdNot("updated@cloud.test", id)).thenReturn(false);
+        when(companyRepository.findAllByOwnerIdAndActiveTrueOrderByCreatedAtDesc(owner.getId())).thenReturn(List.of());
 
         ownerService.update(id, new OwnerUpdateRequest("Updated", "updated@cloud.test", "newPassword123"));
 

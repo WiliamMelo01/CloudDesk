@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import wiliammelo.clouddesk.security.JwtPrincipal;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -58,6 +59,15 @@ class OwnerControllerTest {
 
     private OwnerResponse response() {
         Instant now = Instant.parse("2026-05-14T18:00:00Z");
-        return new OwnerResponse(UUID.randomUUID(), "Owner", "owner@cloud.test", UserRole.OWNER, true, now, now);
+        return new OwnerResponse(
+                UUID.randomUUID(),
+                "Owner",
+                "owner@cloud.test",
+                UserRole.OWNER,
+                true,
+                List.of(),
+                now,
+                now
+        );
     }
 }

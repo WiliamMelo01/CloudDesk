@@ -5,6 +5,7 @@ import wiliammelo.clouddesk.security.JwtPrincipal;
 import wiliammelo.clouddesk.user.UserRole;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -58,6 +59,15 @@ class AgentControllerTest {
 
     private AgentResponse response() {
         Instant now = Instant.parse("2026-05-14T18:00:00Z");
-        return new AgentResponse(UUID.randomUUID(), "Agent", "agent@cloud.test", UserRole.AGENT, true, now, now);
+        return new AgentResponse(
+                UUID.randomUUID(),
+                "Agent",
+                "agent@cloud.test",
+                UserRole.AGENT,
+                true,
+                List.of(),
+                now,
+                now
+        );
     }
 }

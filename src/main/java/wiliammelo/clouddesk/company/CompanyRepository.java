@@ -14,6 +14,8 @@ public interface CompanyRepository extends JpaRepository<Company, UUID> {
 
     List<Company> findAllByActiveTrueOrderByCreatedAtDesc();
 
+    List<Company> findAllByAgentsIdAndActiveTrueOrderByCreatedAtDesc(UUID agentId);
+
     List<Company> findAllByOwnerIdAndActiveTrueOrderByCreatedAtDesc(UUID ownerId);
 
     Optional<Company> findByIdAndOwnerId(UUID id, UUID ownerId);

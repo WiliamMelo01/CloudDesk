@@ -3,6 +3,7 @@ package wiliammelo.clouddesk.owner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import wiliammelo.clouddesk.company.CompanyRepository;
 import wiliammelo.clouddesk.shared.ConflictException;
 import wiliammelo.clouddesk.shared.ResourceNotFoundException;
 import wiliammelo.clouddesk.user.User;
@@ -16,10 +17,16 @@ import java.util.UUID;
 public class OwnerService {
 
     private final UserRepository userRepository;
+    private final CompanyRepository companyRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public OwnerService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public OwnerService(
+            UserRepository userRepository,
+            CompanyRepository companyRepository,
+            PasswordEncoder passwordEncoder
+    ) {
         this.userRepository = userRepository;
+        this.companyRepository = companyRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -37,20 +44,20 @@ public class OwnerService {
                 UserRole.OWNER
         );
 
-        return OwnerResponse.from(userRepository.save(owner));
+        return toResponse(userRepository.save(owner));
     }
 
     @Transactional(readOnly = true)
     public List<OwnerResponse> list() {
         return userRepository.findAllByRoleAndActiveTrueOrderByCreatedAtDesc(UserRole.OWNER)
                 .stream()
-                .map(OwnerResponse::from)
+                .map(this::toResponse)
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public OwnerResponse get(UUID id) {
-        return OwnerResponse.from(findOwner(id));
+        return toResponse(findOwner(id));
     }
 
     @Transactional
@@ -67,7 +74,7 @@ public class OwnerService {
             owner.setPasswordHash(passwordEncoder.encode(request.password()));
         }
 
-        return OwnerResponse.from(owner);
+        return toResponse(owner);
     }
 
     @Transactional
@@ -80,6 +87,14 @@ public class OwnerService {
         return userRepository.findByIdAndRole(id, UserRole.OWNER)
                 .filter(User::isActive)
                 .orElseThrow(() -> new ResourceNotFoundException("Owner not found."));
+    }
+
+    private OwnerResponse toResponse(User owner) {
+        List<OwnerCompanyResponse> companies = companyRepository.findAllByOwnerIdAndActiveTrueOrderByCreatedAtDesc(owner.getId())
+                .stream()
+                .map(OwnerCompanyResponse::from)
+                .toList();
+        return OwnerResponse.from(owner, companies);
     }
 
     private String normalizeEmail(String email) {
