@@ -6,6 +6,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.web.cors.CorsConfiguration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -19,6 +20,18 @@ class SecurityConfigTest {
     void createsPasswordEncoder() {
         assertThat(securityConfig.passwordEncoder().matches("password", securityConfig.passwordEncoder().encode("password")))
                 .isTrue();
+    }
+
+    @Test
+    void createsCorsConfigurationThatAcceptsAnyOrigin() {
+        CorsConfiguration configuration = securityConfig.corsConfigurationSource()
+                .getCorsConfiguration(new MockHttpServletRequest());
+
+        assertThat(configuration).isNotNull();
+        assertThat(configuration.getAllowedOriginPatterns()).containsExactly("*");
+        assertThat(configuration.getAllowedMethods()).containsExactly("*");
+        assertThat(configuration.getAllowedHeaders()).containsExactly("*");
+        assertThat(configuration.getAllowCredentials()).isTrue();
     }
 
     @Test
