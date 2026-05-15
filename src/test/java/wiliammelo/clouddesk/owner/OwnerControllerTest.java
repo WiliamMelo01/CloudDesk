@@ -1,9 +1,9 @@
 package wiliammelo.clouddesk.owner;
 
 import org.junit.jupiter.api.Test;
+import wiliammelo.clouddesk.security.JwtPrincipal;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -16,6 +16,12 @@ class OwnerControllerTest {
 
     private final OwnerService ownerService = mock(OwnerService.class);
     private final OwnerController ownerController = new OwnerController(ownerService);
+    private final JwtPrincipal principal = new JwtPrincipal(
+            UUID.fromString("11111111-1111-1111-1111-111111111111"),
+            "owner@cloud.test",
+            UserRole.OWNER,
+            UUID.fromString("22222222-2222-2222-2222-222222222222")
+    );
 
     @Test
     void createsOwner() {
@@ -27,39 +33,27 @@ class OwnerControllerTest {
     }
 
     @Test
-    void listsOwners() {
-        List<OwnerResponse> response = List.of(response());
-        when(ownerService.list()).thenReturn(response);
-
-        assertThat(ownerController.list()).isEqualTo(response);
-    }
-
-    @Test
-    void getsOwner() {
-        UUID id = UUID.randomUUID();
+    void getsCurrentOwner() {
         OwnerResponse response = response();
-        when(ownerService.get(id)).thenReturn(response);
+        when(ownerService.get(principal.userId())).thenReturn(response);
 
-        assertThat(ownerController.get(id)).isEqualTo(response);
+        assertThat(ownerController.get(principal)).isEqualTo(response);
     }
 
     @Test
-    void updatesOwner() {
-        UUID id = UUID.randomUUID();
+    void updatesCurrentOwner() {
         OwnerUpdateRequest request = new OwnerUpdateRequest("Updated", "updated@cloud.test", null);
         OwnerResponse response = response();
-        when(ownerService.update(id, request)).thenReturn(response);
+        when(ownerService.update(principal.userId(), request)).thenReturn(response);
 
-        assertThat(ownerController.update(id, request)).isEqualTo(response);
+        assertThat(ownerController.update(principal, request)).isEqualTo(response);
     }
 
     @Test
-    void deletesOwner() {
-        UUID id = UUID.randomUUID();
+    void deletesCurrentOwner() {
+        ownerController.delete(principal);
 
-        ownerController.delete(id);
-
-        verify(ownerService).delete(id);
+        verify(ownerService).delete(principal.userId());
     }
 
     private OwnerResponse response() {
