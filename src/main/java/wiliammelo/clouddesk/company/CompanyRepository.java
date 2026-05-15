@@ -18,5 +18,7 @@ public interface CompanyRepository extends JpaRepository<Company, UUID> {
 
     Optional<Company> findByIdAndOwnerId(UUID id, UUID ownerId);
 
+    Optional<Company> findByPortalSlugIgnoreCase(String portalSlug);
+
     boolean existsByIdAndAgentsId(UUID companyId, UUID agentId);
 }

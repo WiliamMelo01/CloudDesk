@@ -57,6 +57,11 @@ public class CompanyService {
         return CompanyResponse.from(findCompany(ownerId, id));
     }
 
+    @Transactional(readOnly = true)
+    public CompanyResponse getBySlug(String portalSlug) {
+        return CompanyResponse.from(findActiveCompanyBySlug(portalSlug));
+    }
+
     @Transactional
     public CompanyResponse update(UUID ownerId, UUID id, CompanyUpdateRequest request) {
         Company company = findCompany(ownerId, id);
@@ -108,6 +113,12 @@ public class CompanyService {
 
     private Company findCompany(UUID ownerId, UUID id) {
         return companyRepository.findByIdAndOwnerId(id, ownerId)
+                .filter(Company::isActive)
+                .orElseThrow(() -> new ResourceNotFoundException("Company not found."));
+    }
+
+    private Company findActiveCompanyBySlug(String portalSlug) {
+        return companyRepository.findByPortalSlugIgnoreCase(normalizeSlug(portalSlug))
                 .filter(Company::isActive)
                 .orElseThrow(() -> new ResourceNotFoundException("Company not found."));
     }

@@ -60,6 +60,14 @@ public class CompanyController {
         return companyService.list(principal.userId());
     }
 
+    @GetMapping("/slug/{slug}")
+    @Operation(summary = "Get company by slug", description = "Returns one active company workspace by portal slug for public portal usage.")
+    @ApiResponse(responseCode = "200", description = "Company returned")
+    @ApiResponse(responseCode = "404", description = "Company not found")
+    public CompanyResponse getBySlug(@PathVariable String slug) {
+        return companyService.getBySlug(slug);
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Get company", description = "Returns one active company workspace by id.")
     @ApiResponse(responseCode = "200", description = "Company returned")

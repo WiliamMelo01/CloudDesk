@@ -87,11 +87,31 @@ class CompanyServiceTest {
     }
 
     @Test
+    void getsCompanyBySlug() {
+        Company company = company();
+        when(companyRepository.findByPortalSlugIgnoreCase("bytecare")).thenReturn(Optional.of(company));
+
+        CompanyResponse response = companyService.getBySlug(" ByteCare ");
+
+        assertThat(response.name()).isEqualTo("ByteCare");
+        assertThat(response.portalSlug()).isEqualTo("bytecare");
+    }
+
+    @Test
     void rejectsGetWhenCompanyDoesNotExist() {
         UUID id = UUID.randomUUID();
         when(companyRepository.findByIdAndOwnerId(id, ownerId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> companyService.get(ownerId, id))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("Company not found.");
+    }
+
+    @Test
+    void rejectsGetBySlugWhenCompanyDoesNotExist() {
+        when(companyRepository.findByPortalSlugIgnoreCase("bytecare")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> companyService.getBySlug("bytecare"))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Company not found.");
     }
@@ -104,6 +124,17 @@ class CompanyServiceTest {
         when(companyRepository.findByIdAndOwnerId(id, ownerId)).thenReturn(Optional.of(company));
 
         assertThatThrownBy(() -> companyService.get(ownerId, id))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("Company not found.");
+    }
+
+    @Test
+    void rejectsGetBySlugWhenCompanyIsInactive() {
+        Company company = company();
+        company.deactivate();
+        when(companyRepository.findByPortalSlugIgnoreCase("bytecare")).thenReturn(Optional.of(company));
+
+        assertThatThrownBy(() -> companyService.getBySlug("bytecare"))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Company not found.");
     }

@@ -43,6 +43,14 @@ class CompanyControllerTest {
     }
 
     @Test
+    void getsCompanyBySlug() {
+        CompanyResponse response = response();
+        when(companyService.getBySlug("bytecare")).thenReturn(response);
+
+        assertThat(companyController.getBySlug("bytecare")).isEqualTo(response);
+    }
+
+    @Test
     void getsCompany() {
         UUID id = UUID.randomUUID();
         CompanyResponse response = response();
