@@ -41,6 +41,18 @@ class AgentTicketControllerTest {
         assertThat(controller.get(principal, companyId, ticketId)).isEqualTo(response);
     }
 
+    @Test
+    void repliesToAgentTicket() {
+        TicketMessageRequest request = new TicketMessageRequest("Ja iniciamos o atendimento.");
+        java.util.List<org.springframework.mock.web.MockMultipartFile> files = java.util.List.of(
+                new org.springframework.mock.web.MockMultipartFile("files", "evidence.pdf", "application/pdf", "pdf".getBytes())
+        );
+        TicketResponse response = response();
+        when(ticketService.replyAsAgent(principal.userId(), companyId, ticketId, request, List.copyOf(files))).thenReturn(response);
+
+        assertThat(controller.reply(principal, companyId, ticketId, request, List.copyOf(files))).isEqualTo(response);
+    }
+
     private TicketResponse response() {
         Instant now = Instant.parse("2026-05-14T18:00:00Z");
         return new TicketResponse(
@@ -52,6 +64,7 @@ class AgentTicketControllerTest {
                 "Need help",
                 TicketStatus.OPEN,
                 TicketPriority.HIGH,
+                List.of(),
                 List.of(),
                 now,
                 now

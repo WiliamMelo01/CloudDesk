@@ -62,6 +62,10 @@ public class Ticket {
     @OrderBy("createdAt ASC")
     private List<TicketAttachment> attachments = new ArrayList<>();
 
+    @OneToMany(mappedBy = "ticket", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("createdAt ASC")
+    private List<TicketMessage> messages = new ArrayList<>();
+
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -124,6 +128,10 @@ public class Ticket {
         return status;
     }
 
+    public void setStatus(TicketStatus status) {
+        this.status = status;
+    }
+
     public TicketPriority getPriority() {
         return priority;
     }
@@ -134,6 +142,14 @@ public class Ticket {
 
     public void addAttachment(TicketAttachment attachment) {
         attachments.add(attachment);
+    }
+
+    public List<TicketMessage> getMessages() {
+        return messages;
+    }
+
+    public void addMessage(TicketMessage message) {
+        messages.add(message);
     }
 
     public Instant getCreatedAt() {

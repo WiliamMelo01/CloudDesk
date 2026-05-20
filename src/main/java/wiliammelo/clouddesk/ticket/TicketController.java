@@ -73,4 +73,38 @@ public class TicketController {
     public TicketResponse get(@AuthenticationPrincipal JwtPrincipal principal, @PathVariable UUID id) {
         return ticketService.get(principal.userId(), id);
     }
+
+    @PostMapping("/{id}/messages")
+    @Operation(
+            summary = "Reply to ticket",
+            description = """
+                    Adds a reply to one ticket owned by the authenticated customer with optional image or PDF attachments.
+
+                    Example curl:
+                    curl -X POST 'http://localhost:8080/api/tickets/{id}/messages' \\
+                      -H 'Authorization: Bearer <access-token>' \\
+                      -F 'request={"message":"Segue comprovante e mais detalhes."};type=application/json' \\
+                      -F 'files=@/path/to/evidence.pdf;type=application/pdf' \\
+                      -F 'files=@/path/to/screenshot.png;type=image/png'
+                    """
+    )
+    @ApiResponse(responseCode = "200", description = "Reply added")
+    @ApiResponse(responseCode = "400", description = "Invalid request")
+    @ApiResponse(responseCode = "401", description = "Missing or invalid access token")
+    @ApiResponse(responseCode = "404", description = "Ticket not found")
+    @RequestBody(
+            required = true,
+            content = @Content(
+                    mediaType = "multipart/form-data",
+                    schema = @Schema(implementation = TicketMessageMultipartRequestDoc.class)
+            )
+    )
+    public TicketResponse reply(
+            @AuthenticationPrincipal JwtPrincipal principal,
+            @PathVariable UUID id,
+            @Valid @RequestPart("request") TicketMessageRequest request,
+            @RequestPart(value = "files", required = false) List<MultipartFile> files
+    ) {
+        return ticketService.replyAsCustomer(principal.userId(), id, request, files);
+    }
 }

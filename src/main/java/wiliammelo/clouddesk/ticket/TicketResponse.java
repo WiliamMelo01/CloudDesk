@@ -14,6 +14,7 @@ public record TicketResponse(
         TicketStatus status,
         TicketPriority priority,
         List<TicketAttachmentResponse> attachments,
+        List<TicketMessageResponse> messages,
         Instant createdAt,
         Instant updatedAt
 ) {
@@ -30,6 +31,9 @@ public record TicketResponse(
                 ticket.getPriority(),
                 ticket.getAttachments().stream()
                         .map(TicketAttachmentResponse::from)
+                        .toList(),
+                ticket.getMessages().stream()
+                        .map(TicketMessageResponse::from)
                         .toList(),
                 ticket.getCreatedAt(),
                 ticket.getUpdatedAt()

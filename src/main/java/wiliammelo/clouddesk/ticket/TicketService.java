@@ -103,6 +103,30 @@ public class TicketService {
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket not found.")));
     }
 
+    @Transactional
+    public TicketResponse replyAsCustomer(UUID customerId, UUID ticketId, TicketMessageRequest request, List<MultipartFile> files) {
+        User customer = findCustomer(customerId);
+        Ticket ticket = ticketRepository.findByIdAndCustomerId(ticketId, customerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Ticket not found."));
+        return appendMessage(ticket, customer, request.message(), files, TicketStatus.OPEN);
+    }
+
+    @Transactional
+    public TicketResponse replyAsOwner(UUID ownerId, UUID companyId, UUID ticketId, TicketMessageRequest request, List<MultipartFile> files) {
+        User owner = findUserByRole(ownerId, UserRole.OWNER, "Owner not found.");
+        Ticket ticket = ticketRepository.findByIdAndCompanyIdAndCompanyOwnerIdAndCompanyActiveTrue(ticketId, companyId, ownerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Ticket not found."));
+        return appendMessage(ticket, owner, request.message(), files, TicketStatus.IN_PROGRESS);
+    }
+
+    @Transactional
+    public TicketResponse replyAsAgent(UUID agentId, UUID companyId, UUID ticketId, TicketMessageRequest request, List<MultipartFile> files) {
+        User agent = findUserByRole(agentId, UserRole.AGENT, "Agent not found.");
+        Ticket ticket = ticketRepository.findByIdAndCompanyIdAndCompanyAgentsIdAndCompanyActiveTrue(ticketId, companyId, agentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Ticket not found."));
+        return appendMessage(ticket, agent, request.message(), files, TicketStatus.IN_PROGRESS);
+    }
+
     private User findCustomer(UUID customerId) {
         return findUserByRole(customerId, UserRole.CUSTOMER, "Customer not found.");
     }
@@ -174,6 +198,62 @@ public class TicketService {
     private void rollbackUploads(List<String> uploadedKeys) {
         for (String objectKey : uploadedKeys) {
             fileStorageService.delete(objectKey);
+        }
+    }
+
+    private TicketResponse appendMessage(Ticket ticket, User author, String message, List<MultipartFile> files, TicketStatus nextStatus) {
+        ensureTicketAcceptsReplies(ticket);
+        if (message == null || message.isBlank()) {
+            throw new BadRequestException("Message is required.");
+        }
+
+        TicketMessage ticketMessage = new TicketMessage(ticket, author, message.trim());
+        uploadMessageAttachments(ticket, ticketMessage, files);
+        ticket.addMessage(ticketMessage);
+        ticket.setStatus(nextStatus);
+
+        return TicketResponse.from(ticketRepository.save(ticket));
+    }
+
+    private void ensureTicketAcceptsReplies(Ticket ticket) {
+        if (ticket.getStatus() == TicketStatus.CLOSED) {
+            throw new BadRequestException("Closed tickets cannot receive replies.");
+        }
+    }
+
+    private void uploadMessageAttachments(Ticket ticket, TicketMessage ticketMessage, List<MultipartFile> files) {
+        if (files == null || files.isEmpty()) {
+            return;
+        }
+
+        List<String> uploadedKeys = new ArrayList<>();
+        try {
+            for (MultipartFile file : files) {
+                validateAttachment(file);
+                String sanitizedFilename = sanitizeFilename(file.getOriginalFilename());
+                String objectKey = "tickets/" + ticket.getId() + "/messages/" + UUID.randomUUID() + "/attachments/" + sanitizedFilename;
+                String fileUrl = fileStorageService.upload(
+                        objectKey,
+                        file.getInputStream(),
+                        file.getSize(),
+                        Objects.requireNonNull(file.getContentType())
+                );
+                uploadedKeys.add(objectKey);
+                ticketMessage.addAttachment(new TicketMessageAttachment(
+                        ticketMessage,
+                        sanitizedFilename,
+                        file.getContentType(),
+                        file.getSize(),
+                        objectKey,
+                        fileUrl
+                ));
+            }
+        } catch (IOException exception) {
+            rollbackUploads(uploadedKeys);
+            throw new BadRequestException("Unable to read attachment file.");
+        } catch (RuntimeException exception) {
+            rollbackUploads(uploadedKeys);
+            throw exception;
         }
     }
 }

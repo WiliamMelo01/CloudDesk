@@ -26,6 +26,7 @@ class TicketTest {
                 "tickets/1/evidence.png",
                 "http://localhost/evidence.png"
         );
+        TicketMessage message = new TicketMessage(ticket, agent, "Ja estamos analisando.");
 
         assertThat(ticket.getId()).isNull();
         assertThat(ticket.getCompany()).isEqualTo(company);
@@ -36,12 +37,17 @@ class TicketTest {
         assertThat(ticket.getStatus()).isEqualTo(TicketStatus.OPEN);
         assertThat(ticket.getPriority()).isEqualTo(TicketPriority.HIGH);
         assertThat(ticket.getAttachments()).isEmpty();
+        assertThat(ticket.getMessages()).isEmpty();
 
         ticket.setAssignedAgent(agent);
         ticket.addAttachment(attachment);
+        ticket.addMessage(message);
+        ticket.setStatus(TicketStatus.IN_PROGRESS);
 
         assertThat(ticket.getAssignedAgent()).isEqualTo(agent);
         assertThat(ticket.getAttachments()).containsExactly(attachment);
+        assertThat(ticket.getMessages()).containsExactly(message);
+        assertThat(ticket.getStatus()).isEqualTo(TicketStatus.IN_PROGRESS);
 
         ticket.prePersist();
         Instant createdAt = ticket.getCreatedAt();

@@ -52,6 +52,17 @@ class TicketControllerTest {
         assertThat(ticketController.get(principal, id)).isEqualTo(response);
     }
 
+    @Test
+    void repliesToTicket() {
+        UUID id = UUID.randomUUID();
+        TicketMessageRequest request = new TicketMessageRequest("Ja estamos analisando.");
+        List<MockMultipartFile> files = List.of(new MockMultipartFile("files", "evidence.pdf", "application/pdf", "pdf".getBytes()));
+        TicketResponse response = response();
+        when(ticketService.replyAsCustomer(principal.userId(), id, request, List.copyOf(files))).thenReturn(response);
+
+        assertThat(ticketController.reply(principal, id, request, List.copyOf(files))).isEqualTo(response);
+    }
+
     private TicketResponse response() {
         Instant now = Instant.parse("2026-05-14T18:00:00Z");
         return new TicketResponse(
@@ -63,6 +74,7 @@ class TicketControllerTest {
                 "Need help",
                 TicketStatus.OPEN,
                 TicketPriority.HIGH,
+                List.of(),
                 List.of(),
                 now,
                 now

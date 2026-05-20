@@ -257,6 +257,119 @@ class TicketServiceTest {
     }
 
     @Test
+    void customerRepliesToTicket() throws Exception {
+        UUID ticketId = UUID.randomUUID();
+        Ticket ticket = ticket();
+        set(ticket, "id", ticketId);
+        set(ticket.getCompany(), "id", UUID.randomUUID());
+        set(ticket.getCustomer(), "id", customerId);
+        when(userRepository.findByIdAndRole(customerId, UserRole.CUSTOMER)).thenReturn(Optional.of(customer()));
+        when(ticketRepository.findByIdAndCustomerId(ticketId, customerId)).thenReturn(Optional.of(ticket));
+        when(ticketRepository.save(ticket)).thenReturn(ticket);
+
+        TicketResponse response = ticketService.replyAsCustomer(customerId, ticketId, new TicketMessageRequest(" Cliente enviou retorno. "), null);
+
+        assertThat(response.status()).isEqualTo(TicketStatus.OPEN);
+        assertThat(response.messages()).singleElement()
+                .extracting(TicketMessageResponse::message, TicketMessageResponse::authorRole)
+                .containsExactly("Cliente enviou retorno.", UserRole.CUSTOMER);
+    }
+
+    @Test
+    void agentRepliesToTicket() throws Exception {
+        UUID agentId = UUID.randomUUID();
+        UUID companyId = UUID.randomUUID();
+        UUID ticketId = UUID.randomUUID();
+        Ticket ticket = ticket();
+        set(ticket, "id", ticketId);
+        set(ticket.getCompany(), "id", companyId);
+        when(userRepository.findByIdAndRole(agentId, UserRole.AGENT)).thenReturn(Optional.of(agent()));
+        when(ticketRepository.findByIdAndCompanyIdAndCompanyAgentsIdAndCompanyActiveTrue(ticketId, companyId, agentId))
+                .thenReturn(Optional.of(ticket));
+        when(ticketRepository.save(ticket)).thenReturn(ticket);
+
+        TicketResponse response = ticketService.replyAsAgent(agentId, companyId, ticketId, new TicketMessageRequest("Ja iniciamos o atendimento."), null);
+
+        assertThat(response.status()).isEqualTo(TicketStatus.IN_PROGRESS);
+        assertThat(response.messages()).singleElement()
+                .extracting(TicketMessageResponse::message, TicketMessageResponse::authorRole)
+                .containsExactly("Ja iniciamos o atendimento.", UserRole.AGENT);
+    }
+
+    @Test
+    void ownerRepliesToTicket() throws Exception {
+        UUID ownerId = UUID.randomUUID();
+        UUID companyId = UUID.randomUUID();
+        UUID ticketId = UUID.randomUUID();
+        Ticket ticket = ticket();
+        set(ticket, "id", ticketId);
+        set(ticket.getCompany(), "id", companyId);
+        when(userRepository.findByIdAndRole(ownerId, UserRole.OWNER)).thenReturn(Optional.of(owner()));
+        when(ticketRepository.findByIdAndCompanyIdAndCompanyOwnerIdAndCompanyActiveTrue(ticketId, companyId, ownerId))
+                .thenReturn(Optional.of(ticket));
+        when(ticketRepository.save(ticket)).thenReturn(ticket);
+
+        TicketResponse response = ticketService.replyAsOwner(ownerId, companyId, ticketId, new TicketMessageRequest("Vamos acompanhar a tratativa."), null);
+
+        assertThat(response.status()).isEqualTo(TicketStatus.IN_PROGRESS);
+        assertThat(response.messages()).singleElement()
+                .extracting(TicketMessageResponse::message, TicketMessageResponse::authorRole)
+                .containsExactly("Vamos acompanhar a tratativa.", UserRole.OWNER);
+    }
+
+    @Test
+    void customerRepliesToTicketWithAttachments() throws Exception {
+        UUID ticketId = UUID.randomUUID();
+        Ticket ticket = ticket();
+        MockMultipartFile image = new MockMultipartFile("files", "Error Shot.PNG", "image/png", "img".getBytes());
+        MockMultipartFile pdf = new MockMultipartFile("files", " report .pdf ", "application/pdf", "pdf".getBytes());
+        set(ticket, "id", ticketId);
+        set(ticket.getCompany(), "id", UUID.randomUUID());
+        set(ticket.getCustomer(), "id", customerId);
+        when(userRepository.findByIdAndRole(customerId, UserRole.CUSTOMER)).thenReturn(Optional.of(customer()));
+        when(ticketRepository.findByIdAndCustomerId(ticketId, customerId)).thenReturn(Optional.of(ticket));
+        when(ticketRepository.save(ticket)).thenReturn(ticket);
+        when(fileStorageService.upload(anyString(), any(), anyLong(), anyString()))
+                .thenReturn("http://localhost/file-1", "http://localhost/file-2");
+
+        TicketResponse response = ticketService.replyAsCustomer(
+                customerId,
+                ticketId,
+                new TicketMessageRequest("Cliente enviou documentos."),
+                List.of(image, pdf)
+        );
+
+        assertThat(response.messages()).singleElement()
+                .satisfies(message -> assertThat(message.attachments())
+                        .extracting(TicketMessageAttachmentResponse::filename)
+                        .containsExactly("error-shot.png", "report-.pdf"));
+        verify(fileStorageService, times(2)).upload(anyString(), any(), anyLong(), anyString());
+    }
+
+    @Test
+    void customerRepliesToTicketWithEmptyAttachmentList() throws Exception {
+        UUID ticketId = UUID.randomUUID();
+        Ticket ticket = ticket();
+        set(ticket, "id", ticketId);
+        set(ticket.getCompany(), "id", UUID.randomUUID());
+        set(ticket.getCustomer(), "id", customerId);
+        when(userRepository.findByIdAndRole(customerId, UserRole.CUSTOMER)).thenReturn(Optional.of(customer()));
+        when(ticketRepository.findByIdAndCustomerId(ticketId, customerId)).thenReturn(Optional.of(ticket));
+        when(ticketRepository.save(ticket)).thenReturn(ticket);
+
+        TicketResponse response = ticketService.replyAsCustomer(
+                customerId,
+                ticketId,
+                new TicketMessageRequest("Cliente respondeu sem anexos."),
+                List.of()
+        );
+
+        assertThat(response.messages()).singleElement()
+                .satisfies(message -> assertThat(message.attachments()).isEmpty());
+        verify(fileStorageService, never()).upload(anyString(), any(), anyLong(), anyString());
+    }
+
+    @Test
     void rejectsCreateWhenCustomerDoesNotExist() {
         UUID companyId = UUID.randomUUID();
         when(userRepository.findByIdAndRole(customerId, UserRole.CUSTOMER)).thenReturn(Optional.empty());
@@ -302,6 +415,88 @@ class TicketServiceTest {
         ), null))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Company not found.");
+    }
+
+    @Test
+    void rejectsReplyWhenMessageIsBlank() throws Exception {
+        UUID ticketId = UUID.randomUUID();
+        Ticket ticket = ticket();
+        set(ticket, "id", ticketId);
+        set(ticket.getCompany(), "id", UUID.randomUUID());
+        set(ticket.getCustomer(), "id", customerId);
+        when(userRepository.findByIdAndRole(customerId, UserRole.CUSTOMER)).thenReturn(Optional.of(customer()));
+        when(ticketRepository.findByIdAndCustomerId(ticketId, customerId)).thenReturn(Optional.of(ticket));
+
+        assertThatThrownBy(() -> ticketService.replyAsCustomer(customerId, ticketId, new TicketMessageRequest("   "), null))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Message is required.");
+    }
+
+    @Test
+    void rejectsReplyWhenMessageIsNull() throws Exception {
+        UUID ticketId = UUID.randomUUID();
+        Ticket ticket = ticket();
+        set(ticket, "id", ticketId);
+        set(ticket.getCompany(), "id", UUID.randomUUID());
+        set(ticket.getCustomer(), "id", customerId);
+        when(userRepository.findByIdAndRole(customerId, UserRole.CUSTOMER)).thenReturn(Optional.of(customer()));
+        when(ticketRepository.findByIdAndCustomerId(ticketId, customerId)).thenReturn(Optional.of(ticket));
+
+        assertThatThrownBy(() -> ticketService.replyAsCustomer(customerId, ticketId, new TicketMessageRequest(null), null))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Message is required.");
+    }
+
+    @Test
+    void rejectsReplyWhenTicketIsClosed() throws Exception {
+        UUID ticketId = UUID.randomUUID();
+        Ticket ticket = ticket();
+        ticket.setStatus(TicketStatus.CLOSED);
+        set(ticket, "id", ticketId);
+        set(ticket.getCompany(), "id", UUID.randomUUID());
+        set(ticket.getCustomer(), "id", customerId);
+        when(userRepository.findByIdAndRole(customerId, UserRole.CUSTOMER)).thenReturn(Optional.of(customer()));
+        when(ticketRepository.findByIdAndCustomerId(ticketId, customerId)).thenReturn(Optional.of(ticket));
+
+        assertThatThrownBy(() -> ticketService.replyAsCustomer(customerId, ticketId, new TicketMessageRequest("Quero reabrir."), null))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Closed tickets cannot receive replies.");
+    }
+
+    @Test
+    void rejectsReplyWhenAttachmentIsInvalid() throws Exception {
+        UUID ticketId = UUID.randomUUID();
+        Ticket ticket = ticket();
+        MockMultipartFile file = new MockMultipartFile("files", "notes.txt", "text/plain", "bad".getBytes());
+        set(ticket, "id", ticketId);
+        set(ticket.getCompany(), "id", UUID.randomUUID());
+        set(ticket.getCustomer(), "id", customerId);
+        when(userRepository.findByIdAndRole(customerId, UserRole.CUSTOMER)).thenReturn(Optional.of(customer()));
+        when(ticketRepository.findByIdAndCustomerId(ticketId, customerId)).thenReturn(Optional.of(ticket));
+
+        assertThatThrownBy(() -> ticketService.replyAsCustomer(customerId, ticketId, new TicketMessageRequest("Veja anexo."), List.of(file)))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Attachment file must be an image or PDF.");
+    }
+
+    @Test
+    void rejectsReplyWhenAttachmentCannotBeRead() throws Exception {
+        UUID ticketId = UUID.randomUUID();
+        Ticket ticket = ticket();
+        set(ticket, "id", ticketId);
+        set(ticket.getCompany(), "id", UUID.randomUUID());
+        set(ticket.getCustomer(), "id", customerId);
+        when(userRepository.findByIdAndRole(customerId, UserRole.CUSTOMER)).thenReturn(Optional.of(customer()));
+        when(ticketRepository.findByIdAndCustomerId(ticketId, customerId)).thenReturn(Optional.of(ticket));
+
+        assertThatThrownBy(() -> ticketService.replyAsCustomer(
+                customerId,
+                ticketId,
+                new TicketMessageRequest("Veja anexo."),
+                List.of(new MultipartFileStub())
+        ))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Unable to read attachment file.");
     }
 
     @Test
